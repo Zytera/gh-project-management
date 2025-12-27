@@ -39,7 +39,7 @@ func (m Main) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				return m, nextStep
 			}
 		}
-		return m, nil
+		return m, tea.Quit
 	case tea.WindowSizeMsg:
 		// Comprobamos el tamaño del terminal
 		m.width = msg.Width

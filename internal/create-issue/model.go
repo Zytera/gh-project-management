@@ -1,27 +1,33 @@
 package createissue
 
 import (
+	"errors"
+
 	"github.com/Zytera/gh-project-managment/internal/step"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 )
 
 type model struct {
-	happy bool
-	form  *huh.Form
+	name string
+	form *huh.Form
 }
 
 func NewModel() *model {
 
 	m := model{}
-	m.happy = false
-	confirm := huh.NewConfirm().
-		Title("Are you sure? ").
-		Description("Please confirm. ").
-		Affirmative("Yes!").
-		Negative("No.").
-		Value(&m.happy)
-	m.form = huh.NewForm(huh.NewGroup(confirm))
+	inputName := huh.NewInput().
+		Title("Name").
+		Description("Enter the name of the issue").
+		Value(&m.name).
+		Placeholder("Issue Name").
+		Validate(func(s string) error {
+			if len(s) == 0 {
+				return errors.New("name cannot be empty")
+			}
+			return nil
+		})
+	m.form = huh.NewForm(huh.NewGroup(inputName))
 	return &m
 }
 
@@ -48,6 +54,7 @@ func (m *model) Update(msg tea.Msg) (step.StepModel, tea.Cmd) {
 	if f, ok := form.(*huh.Form); ok {
 		m.form = f
 		if m.form.State == huh.StateCompleted {
+			createIssue("Zytera", "project-managment-test", m.name, "")
 			return m, func() tea.Msg {
 				return step.NextStepMsg{}
 			}
