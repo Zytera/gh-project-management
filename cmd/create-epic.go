@@ -25,7 +25,7 @@ func init() {
 
 func runCreateEpic(cmd *cobra.Command, args []string) error {
 
-	model := createEpic.NewModel(6)
+	model := createEpic.NewModel()
 
 	p := tea.NewProgram(model, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
