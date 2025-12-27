@@ -3,7 +3,8 @@ package cmd
 import (
 	"log"
 
-	createEpic "github.com/Zytera/gh-project-managment/internal/create-epic"
+	createIssue "github.com/Zytera/gh-project-managment/internal/create-issue"
+	"github.com/Zytera/gh-project-managment/internal/step"
 
 	"github.com/spf13/cobra"
 
@@ -25,9 +26,16 @@ func init() {
 
 func runCreateEpic(cmd *cobra.Command, args []string) error {
 
-	model := createEpic.NewModel()
+	steps := []step.Step{
+		{
+			Title: "validate",
+			Model: createIssue.NewModel(),
+		},
+	}
 
-	p := tea.NewProgram(model, tea.WithAltScreen())
+	main := step.New(steps)
+
+	p := tea.NewProgram(*main, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatal(err)
 	}
