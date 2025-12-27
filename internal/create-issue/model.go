@@ -9,8 +9,10 @@ import (
 )
 
 type model struct {
-	name string
-	form *huh.Form
+	name  string
+	form  *huh.Form
+	error string
+	url   string
 }
 
 func NewModel() *model {
@@ -28,6 +30,7 @@ func NewModel() *model {
 			return nil
 		})
 	m.form = huh.NewForm(huh.NewGroup(inputName))
+	m.url = ""
 	return &m
 }
 
@@ -54,7 +57,15 @@ func (m *model) Update(msg tea.Msg) (step.StepModel, tea.Cmd) {
 	if f, ok := form.(*huh.Form); ok {
 		m.form = f
 		if m.form.State == huh.StateCompleted {
-			createIssue("Zytera", "project-managment-test", m.name, "")
+			if m.url == "" {
+				url, err := createIssue("Zytera", "project-managment-test", m.name, "epic")
+				if err != nil {
+					m.error = err.Error()
+					return m, cmd
+				}
+				m.url = url
+			}
+
 			return m, func() tea.Msg {
 				return step.NextStepMsg{}
 			}
@@ -70,5 +81,5 @@ func (m *model) Update(msg tea.Msg) (step.StepModel, tea.Cmd) {
 }
 
 func (m *model) View() string {
-	return m.form.View()
+	return m.form.View() + "\n" + m.error + "\n" + m.url
 }

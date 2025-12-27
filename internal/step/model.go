@@ -106,7 +106,7 @@ func (m Main) View() string {
 		helpText,
 	)
 
-	return styles.ContainerStyle.Render(content)
+	return content
 }
 
 func (m Main) renderHelpText() string {

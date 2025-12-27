@@ -8,8 +8,13 @@ import (
 	"github.com/cli/go-gh/v2/pkg/api"
 )
 
+var templates = map[string]string{
+	"epic": epicTemplate,
+}
+
 // CreateIssue crea una issue en el repositorio indicado y devuelve la URL de la issue creada.
-func createIssue(owner, repo, title, body string) (string, error) {
+// Si se proporciona issueTemplate, se usará esa plantilla para asignar labels y assignees automáticamente.
+func createIssue(owner, repo, title, issueTemplate string) (string, error) {
 	if owner == "" || repo == "" {
 		return "", errors.New("owner and repo cannot be empty")
 	}
@@ -44,6 +49,14 @@ func createIssue(owner, repo, title, body string) (string, error) {
 		return "", errors.New("repository not found or has no id")
 	}
 	repoID := repoQuery.Repository.ID
+
+	// 1.5) Leer el contenido de la plantilla si se proporciona
+	var body string
+	if issueTemplate != "" {
+		if tmpl, ok := templates[issueTemplate]; ok {
+			body = tmpl
+		}
+	}
 
 	// 2) Crear la issue con mutation createIssue
 	var createResp struct {
