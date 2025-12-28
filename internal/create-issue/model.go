@@ -4,8 +4,8 @@ import (
 	"context"
 	"errors"
 
-	"github.com/Zytera/gh-project-managment/internal/config"
-	"github.com/Zytera/gh-project-managment/internal/step"
+	"github.com/Zytera/gh-project-management/internal/config"
+	"github.com/Zytera/gh-project-management/internal/step"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 )
@@ -64,7 +64,7 @@ func (m *model) Update(msg tea.Msg) (step.StepModel, tea.Cmd) {
 		m.form = f
 		if m.form.State == huh.StateCompleted {
 			if m.url == "" {
-				url, err := createIssue(config.Org, config.ProjectManagementRepoName, m.name, "epic")
+				url, err := createIssue(config.Org, config.DefaultRepo, m.name, "epic")
 				if err != nil {
 					m.error = err.Error()
 					return m, cmd

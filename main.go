@@ -3,7 +3,7 @@ package main
 import (
 	"os"
 
-	"github.com/Zytera/gh-project-managment/cmd"
+	"github.com/Zytera/gh-project-management/cmd"
 )
 
 func main() {

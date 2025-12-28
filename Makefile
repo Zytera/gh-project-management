@@ -1,4 +1,4 @@
-BINARY_NAME=gh-project-managment
+BINARY_NAME=gh-project-management
 
 ## build: Build the binary
 build:

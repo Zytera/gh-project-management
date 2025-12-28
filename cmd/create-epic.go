@@ -3,8 +3,8 @@ package cmd
 import (
 	"log"
 
-	createIssue "github.com/Zytera/gh-project-managment/internal/create-issue"
-	"github.com/Zytera/gh-project-managment/internal/step"
+	createIssue "github.com/Zytera/gh-project-management/internal/create-issue"
+	"github.com/Zytera/gh-project-management/internal/step"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )

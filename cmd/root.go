@@ -5,28 +5,49 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Zytera/gh-project-managment/internal/config"
+	"github.com/Zytera/gh-project-management/internal/config"
 	"github.com/spf13/cobra"
 )
 
 var Version = "dev"
 
 var rootCmd = &cobra.Command{
-	Use:     "gh-project-managment",
-	Short:   "TODO",
-	Long:    `TODO`,
+	Use:   "gh-project-management",
+	Short: "Manage GitHub Projects with hierarchical issues",
+	Long: `gh-project-management is a GitHub CLI extension for managing projects
+with hierarchical issues (Epics, User Stories, Tasks).
+
+Use 'gh project-management init' to set up your first project.`,
 	Version: Version,
 }
 
 func Execute() int {
+	// Check if the command being executed needs configuration
+	// Commands that don't need config: init, context, help, version
+	args := os.Args[1:]
+	needsConfig := true
 
-	cfg, err := config.Load()
-	if err != nil {
-		fmt.Fprintln(os.Stderr, err)
-		return 1
+	if len(args) > 0 {
+		cmd := args[0]
+		// Commands that don't require configuration
+		if cmd == "init" || cmd == "context" || cmd == "help" || cmd == "--help" || cmd == "-h" || cmd == "version" || cmd == "--version" || cmd == "-v" {
+			needsConfig = false
+		}
 	}
 
-	ctx := context.WithValue(context.Background(), config.ConfigKey{}, cfg)
+	var ctx context.Context
+	if needsConfig {
+		cfg, err := config.Load()
+		if err != nil {
+			fmt.Fprintln(os.Stderr, err)
+			fmt.Fprintln(os.Stderr, "\nRun 'gh project-management init' to set up your first project.")
+			return 1
+		}
+		ctx = context.WithValue(context.Background(), config.ConfigKey{}, cfg)
+	} else {
+		ctx = context.Background()
+	}
+
 	rootCmd.SetContext(ctx)
 
 	if err := rootCmd.Execute(); err != nil {
