@@ -1,23 +1,27 @@
 package createissue
 
 import (
+	"context"
 	"errors"
 
+	"github.com/Zytera/gh-project-managment/internal/config"
 	"github.com/Zytera/gh-project-managment/internal/step"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
 )
 
 type model struct {
+	ctx   context.Context
 	name  string
 	form  *huh.Form
 	error string
 	url   string
 }
 
-func NewModel() *model {
+func NewModel(ctx context.Context) *model {
 
 	m := model{}
+	m.ctx = ctx
 	inputName := huh.NewInput().
 		Title("Name").
 		Description("Enter the name of the issue").
@@ -52,13 +56,15 @@ func (m *model) Update(msg tea.Msg) (step.StepModel, tea.Cmd) {
 		}
 	}
 
+	config := m.ctx.Value(config.ConfigKey{}).(*config.Config)
+
 	// Process the form
 	form, cmd := m.form.Update(msg)
 	if f, ok := form.(*huh.Form); ok {
 		m.form = f
 		if m.form.State == huh.StateCompleted {
 			if m.url == "" {
-				url, err := createIssue("Zytera", "project-managment-test", m.name, "epic")
+				url, err := createIssue(config.Org, config.ProjectManagementRepoName, m.name, "epic")
 				if err != nil {
 					m.error = err.Error()
 					return m, cmd

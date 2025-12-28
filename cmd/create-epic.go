@@ -5,10 +5,8 @@ import (
 
 	createIssue "github.com/Zytera/gh-project-managment/internal/create-issue"
 	"github.com/Zytera/gh-project-managment/internal/step"
-
-	"github.com/spf13/cobra"
-
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/spf13/cobra"
 )
 
 var createEpicCmd = &cobra.Command{
@@ -26,10 +24,12 @@ func init() {
 
 func runCreateEpic(cmd *cobra.Command, args []string) error {
 
+	ctx := cmd.Context()
+
 	steps := []step.Step{
 		{
 			Title: "validate",
-			Model: createIssue.NewModel(),
+			Model: createIssue.NewModel(ctx), // https://github.com/charmbracelet/bubbletea/issues/756
 		},
 	}
 
