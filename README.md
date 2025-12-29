@@ -6,7 +6,6 @@ A GitHub CLI extension for managing projects with hierarchical issues (Epics, Us
 
 - 📦 **Hierarchical Issue Management**: Create and manage Epics → User Stories → Tasks
 - 🔄 **Multi-Project Support**: Work with multiple GitHub projects using kubectl-style contexts
-- 🎨 **Interactive TUI**: Beautiful terminal UI powered by Bubble Tea
 - 🔗 **Automatic Linking**: Parent-child relationships and cross-repository references
 - 📊 **Custom Fields**: Manage Team, Priority, and Type fields via GitHub Projects v2
 - 🚀 **Task Transfer**: Automatically transfer tasks to team repositories
@@ -64,13 +63,13 @@ gh project-managment context current
 The extension uses a global configuration file at `~/.config/gh-project-management/config.yaml`:
 
 ```yaml
-current-context: medapsis
+current-context: project-test
 
 contexts:
-  medapsis:
+  project-test:
     org: Zytera
-    project_id: "3"
-    project_name: Medapsis
+    project_id: "1"
+    project_name: Project Test
     default_repo: project-managment
     team_repos:
       Backend: backend
@@ -162,21 +161,10 @@ Epic (in default repository)
 ## Architecture
 
 - **CLI Framework**: Cobra
-- **TUI Framework**: Bubble Tea + Huh
+- **TUI Framework**: Huh
 - **GitHub API**: go-gh (GraphQL)
 - **Configuration**: YAML with kubectl-style contexts
-
-For detailed architecture information, see [CLAUDE.md](CLAUDE.md).
-
-## Contributing
-
-This project is in active development. See [CLAUDE.md](CLAUDE.md) for implementation details and roadmap.
 
 ## License
 
 TODO
-
-## Reference
-
-Based on the project management workflow documented in:
-- [Zytera Project Management Repository](https://github.com/Zytera/project-managment)
