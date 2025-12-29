@@ -169,8 +169,9 @@ func CreateSingleSelectField(ctx context.Context, projectID, fieldName string, o
 	singleSelectOptions := make([]map[string]string, 0, len(options))
 	for name, color := range options {
 		singleSelectOptions = append(singleSelectOptions, map[string]string{
-			"name":  name,
-			"color": string(color),
+			"name":        name,
+			"color":       string(color),
+			"description": "",
 		})
 	}
 
