@@ -142,19 +142,7 @@ func runContextUse(cmd *cobra.Command, args []string) error {
 	return nil
 }
 
-func runContextAdd(cmd *cobra.Command, args []string) error {
-	contextName := args[0]
-
-	globalConfig, err := config.LoadGlobal()
-	if err != nil {
-		return err
-	}
-
-	if _, exists := globalConfig.Contexts[contextName]; exists {
-		return fmt.Errorf("context '%s' already exists", contextName)
-	}
-
-	// Collect configuration via interactive form
+func collectContextConfiguration() (*config.Context, error) {
 	var (
 		org         string
 		projectID   string
@@ -169,11 +157,11 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 
 	orgs, err := gh.ListOrganizations()
 	if err != nil {
-		return fmt.Errorf("error fetching organizations: %w", err)
+		return nil, fmt.Errorf("error fetching organizations: %w", err)
 	}
 
 	if len(orgs) == 0 {
-		return fmt.Errorf("no organizations found. You need to belong to at least one organization")
+		return nil, fmt.Errorf("no organizations found. You need to belong to at least one organization")
 	}
 
 	var selectedOrgIndex int
@@ -197,7 +185,7 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 	)
 
 	if err := orgForm.Run(); err != nil {
-		return fmt.Errorf("error selecting organization: %w", err)
+		return nil, fmt.Errorf("error selecting organization: %w", err)
 	}
 
 	org = orgs[selectedOrgIndex].Login
@@ -208,7 +196,7 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 
 	repos, err := gh.ListOrgRepositories(org)
 	if err != nil {
-		return fmt.Errorf("error fetching repositories: %w", err)
+		return nil, fmt.Errorf("error fetching repositories: %w", err)
 	}
 
 	repoNames := gh.GetRepositoryNames(repos)
@@ -219,11 +207,11 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 
 	projects, err := gh.ListOrgProjects(org)
 	if err != nil {
-		return fmt.Errorf("error fetching projects: %w", err)
+		return nil, fmt.Errorf("error fetching projects: %w", err)
 	}
 
 	if len(projects) == 0 {
-		return fmt.Errorf("no projects found for organization %s", org)
+		return nil, fmt.Errorf("no projects found for organization %s", org)
 	}
 
 	var selectedProjectIndex int
@@ -243,7 +231,7 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 	)
 
 	if err := projectForm.Run(); err != nil {
-		return fmt.Errorf("error selecting project: %w", err)
+		return nil, fmt.Errorf("error selecting project: %w", err)
 	}
 
 	selectedProject := projects[selectedProjectIndex]
@@ -270,10 +258,10 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 	)
 
 	if err := repoForm.Run(); err != nil {
-		return fmt.Errorf("error getting default repo: %w", err)
+		return nil, fmt.Errorf("error getting default repo: %w", err)
 	}
 
-	// Step 2: Team repositories
+	// Step 4: Team repositories
 	fmt.Println()
 	fmt.Println("📦 Now let's configure team repositories where tasks will be transferred.")
 	fmt.Println()
@@ -321,7 +309,7 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 		)
 
 		if err := teamForm.Run(); err != nil {
-			return fmt.Errorf("error running team form: %w", err)
+			return nil, fmt.Errorf("error running team form: %w", err)
 		}
 
 		teamRepos[teamName] = repoName
@@ -329,11 +317,11 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	if len(teamRepos) == 0 {
-		return fmt.Errorf("at least one team repository is required")
+		return nil, fmt.Errorf("at least one team repository is required")
 	}
 
-	// Create and save configuration
-	ctx := config.Context{
+	// Create and validate configuration
+	ctx := &config.Context{
 		Org:         org,
 		ProjectID:   projectID,
 		ProjectName: projectName,
@@ -342,10 +330,31 @@ func runContextAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	if err := ctx.Validate(); err != nil {
-		return fmt.Errorf("invalid configuration: %w", err)
+		return nil, fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	globalConfig.Contexts[contextName] = ctx
+	return ctx, nil
+}
+
+func runContextAdd(cmd *cobra.Command, args []string) error {
+	contextName := args[0]
+
+	globalConfig, err := config.LoadGlobal()
+	if err != nil {
+		return err
+	}
+
+	if _, exists := globalConfig.Contexts[contextName]; exists {
+		return fmt.Errorf("context '%s' already exists", contextName)
+	}
+
+	// Collect configuration via the shared interactive form
+	ctx, err := collectContextConfiguration()
+	if err != nil {
+		return err
+	}
+
+	globalConfig.Contexts[contextName] = *ctx
 
 	// If this is the first context, set it as current
 	if globalConfig.CurrentContext == "" {
