@@ -57,7 +57,7 @@ func Load() (*Config, error) {
 
 	// Check if config file exists
 	if _, err := os.Stat(configPath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("no configuration found. Please run 'gh project-management init' to set up your first project")
+		return nil, fmt.Errorf("no configuration found. Please run 'gh project-management context add <name>' to configure your first project")
 	}
 
 	data, err := os.ReadFile(configPath)
