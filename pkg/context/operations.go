@@ -11,7 +11,8 @@ import (
 // AddContextParams contains parameters for adding a new context
 type AddContextParams struct {
 	Name        string
-	Org         string
+	OwnerType   config.OwnerType
+	Owner       string
 	ProjectID   string
 	ProjectName string
 	DefaultRepo string
@@ -31,7 +32,8 @@ func AddContext(params AddContextParams) error {
 
 	// Create context
 	ctx := &config.Context{
-		Org:         params.Org,
+		OwnerType:   params.OwnerType,
+		Owner:       params.Owner,
 		ProjectID:   params.ProjectID,
 		ProjectName: params.ProjectName,
 		DefaultRepo: params.DefaultRepo,
@@ -45,7 +47,13 @@ func AddContext(params AddContextParams) error {
 	// Ensure Team field exists in the project
 	if params.ProjectID != "" && len(params.TeamRepos) > 0 {
 		// Get project node ID
-		projects, err := gh.ListOrgProjects(params.Org)
+		var projects []gh.Project
+		if params.OwnerType == config.OwnerTypeOrg {
+			projects, err = gh.ListOrgProjects(params.Owner)
+		} else {
+			projects, err = gh.ListUserProjects()
+		}
+
 		if err == nil {
 			for _, p := range projects {
 				if fmt.Sprintf("%d", p.Number) == params.ProjectID {

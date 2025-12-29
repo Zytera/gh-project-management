@@ -15,9 +15,18 @@ type GlobalConfig struct {
 	Contexts       map[string]Context `yaml:"contexts"`
 }
 
+// OwnerType represents the type of project owner
+type OwnerType string
+
+const (
+	OwnerTypeUser OwnerType = "user"
+	OwnerTypeOrg  OwnerType = "org"
+)
+
 // Context represents a project configuration
 type Context struct {
-	Org         string            `yaml:"org"`
+	OwnerType   OwnerType         `yaml:"owner_type"`
+	Owner       string            `yaml:"owner"`
 	ProjectID   string            `yaml:"project_id"`
 	ProjectName string            `yaml:"project_name"`
 	DefaultRepo string            `yaml:"default_repo"`
@@ -26,7 +35,8 @@ type Context struct {
 
 // Config is the active context configuration (for backwards compatibility in code)
 type Config struct {
-	Org         string
+	OwnerType   OwnerType
+	Owner       string
 	ProjectID   string
 	ProjectName string
 	DefaultRepo string
@@ -80,7 +90,8 @@ func Load() (*Config, error) {
 	}
 
 	config := &Config{
-		Org:         ctx.Org,
+		OwnerType:   ctx.OwnerType,
+		Owner:       ctx.Owner,
 		ProjectID:   ctx.ProjectID,
 		ProjectName: ctx.ProjectName,
 		DefaultRepo: ctx.DefaultRepo,
@@ -146,8 +157,11 @@ func Save(globalConfig *GlobalConfig) error {
 
 // Validate checks if the configuration is valid
 func (c *Config) Validate() error {
-	if c.Org == "" {
-		return fmt.Errorf("field 'org' is required")
+	if c.OwnerType != OwnerTypeUser && c.OwnerType != OwnerTypeOrg {
+		return fmt.Errorf("field 'owner_type' must be 'user' or 'org'")
+	}
+	if c.Owner == "" {
+		return fmt.Errorf("field 'owner' is required")
 	}
 	if c.ProjectID == "" {
 		return fmt.Errorf("field 'project_id' is required")
@@ -163,8 +177,11 @@ func (c *Config) Validate() error {
 
 // Validate checks if a context is valid
 func (c *Context) Validate() error {
-	if c.Org == "" {
-		return fmt.Errorf("field 'org' is required")
+	if c.OwnerType != OwnerTypeUser && c.OwnerType != OwnerTypeOrg {
+		return fmt.Errorf("field 'owner_type' must be 'user' or 'org'")
+	}
+	if c.Owner == "" {
+		return fmt.Errorf("field 'owner' is required")
 	}
 	if c.ProjectID == "" {
 		return fmt.Errorf("field 'project_id' is required")

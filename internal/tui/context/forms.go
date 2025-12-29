@@ -15,75 +15,136 @@ import (
 // CollectContextConfiguration runs an interactive form to collect all context configuration
 func CollectContextConfiguration() (*config.Context, error) {
 	var (
-		org         string
+		ownerType   config.OwnerType
+		owner       string
 		projectID   string
 		projectName string
 		defaultRepo string
 		teamRepos   = make(map[string]string)
 	)
 
-	// Step 1: Fetch and select organization
+	// Step 1: Select owner type (user or org)
 	fmt.Println()
-	fmt.Println("🔍 Fetching your organizations...")
 
-	orgs, err := gh.ListOrganizations()
-	if err != nil {
-		return nil, fmt.Errorf("error fetching organizations: %w", err)
-	}
-
-	if len(orgs) == 0 {
-		return nil, fmt.Errorf("no organizations found. You need to belong to at least one organization")
-	}
-
-	var selectedOrgIndex int
-	orgOptions := make([]huh.Option[int], len(orgs))
-	for i, o := range orgs {
-		displayName := o.Login
-		if o.Name != "" {
-			displayName = fmt.Sprintf("%s (%s)", o.Login, o.Name)
-		}
-		orgOptions[i] = huh.NewOption(displayName, i)
-	}
-
-	orgForm := huh.NewForm(
+	var ownerTypeSelection int
+	ownerTypeForm := huh.NewForm(
 		huh.NewGroup(
 			huh.NewSelect[int]().
-				Title("Select organization").
-				Description("Choose the GitHub organization for this project").
-				Options(orgOptions...).
-				Value(&selectedOrgIndex),
+				Title("Project owner type").
+				Description("Select where your project is hosted").
+				Options(
+					huh.NewOption("Personal projects", 0),
+					huh.NewOption("Organization projects", 1),
+				).
+				Value(&ownerTypeSelection),
 		),
 	)
 
-	if err := orgForm.Run(); err != nil {
-		return nil, fmt.Errorf("error selecting organization: %w", err)
+	if err := ownerTypeForm.Run(); err != nil {
+		return nil, fmt.Errorf("error selecting owner type: %w", err)
 	}
 
-	org = orgs[selectedOrgIndex].Login
+	var repos []gh.Repository
+	var repoNames []string
+	var projects []gh.Project
 
-	// Fetch repositories for autocomplete
-	fmt.Println()
-	fmt.Printf("🔍 Fetching repositories for %s...\n", org)
+	if ownerTypeSelection == 0 {
+		// Personal projects
+		ownerType = config.OwnerTypeUser
 
-	repos, err := gh.ListOrgRepositories(org)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching repositories: %w", err)
+		fmt.Println()
+		fmt.Println("🔍 Getting your username...")
+		username, err := gh.GetCurrentUser()
+		if err != nil {
+			return nil, fmt.Errorf("error getting current user: %w", err)
+		}
+		owner = username
+
+		// Fetch user repositories
+		fmt.Println()
+		fmt.Printf("🔍 Fetching your repositories...\n")
+		repos, err = gh.ListUserRepositories()
+		if err != nil {
+			return nil, fmt.Errorf("error fetching repositories: %w", err)
+		}
+		repoNames = gh.GetRepositoryNames(repos)
+
+		// Fetch user projects
+		fmt.Println()
+		fmt.Printf("🔍 Fetching your projects...\n")
+		projects, err = gh.ListUserProjects()
+		if err != nil {
+			return nil, fmt.Errorf("error fetching projects: %w", err)
+		}
+
+		if len(projects) == 0 {
+			return nil, fmt.Errorf("no projects found for user %s", owner)
+		}
+	} else {
+		// Organization projects
+		ownerType = config.OwnerTypeOrg
+
+		fmt.Println()
+		fmt.Println("🔍 Fetching your organizations...")
+
+		orgs, err := gh.ListOrganizations()
+		if err != nil {
+			return nil, fmt.Errorf("error fetching organizations: %w", err)
+		}
+
+		if len(orgs) == 0 {
+			return nil, fmt.Errorf("no organizations found. You need to belong to at least one organization")
+		}
+
+		var selectedOrgIndex int
+		orgOptions := make([]huh.Option[int], len(orgs))
+		for i, o := range orgs {
+			displayName := o.Login
+			if o.Name != "" {
+				displayName = fmt.Sprintf("%s (%s)", o.Login, o.Name)
+			}
+			orgOptions[i] = huh.NewOption(displayName, i)
+		}
+
+		orgForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[int]().
+					Title("Select organization").
+					Description("Choose the GitHub organization for this project").
+					Options(orgOptions...).
+					Value(&selectedOrgIndex),
+			),
+		)
+
+		if err := orgForm.Run(); err != nil {
+			return nil, fmt.Errorf("error selecting organization: %w", err)
+		}
+
+		owner = orgs[selectedOrgIndex].Login
+
+		// Fetch organization repositories
+		fmt.Println()
+		fmt.Printf("🔍 Fetching repositories for %s...\n", owner)
+		repos, err = gh.ListOrgRepositories(owner)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching repositories: %w", err)
+		}
+		repoNames = gh.GetRepositoryNames(repos)
+
+		// Fetch organization projects
+		fmt.Println()
+		fmt.Printf("🔍 Fetching projects for %s...\n", owner)
+		projects, err = gh.ListOrgProjects(owner)
+		if err != nil {
+			return nil, fmt.Errorf("error fetching projects: %w", err)
+		}
+
+		if len(projects) == 0 {
+			return nil, fmt.Errorf("no projects found for organization %s", owner)
+		}
 	}
 
-	repoNames := gh.GetRepositoryNames(repos)
-
-	// Step 2: Fetch and select project
-	fmt.Println()
-	fmt.Printf("🔍 Fetching projects for %s...\n", org)
-
-	projects, err := gh.ListOrgProjects(org)
-	if err != nil {
-		return nil, fmt.Errorf("error fetching projects: %w", err)
-	}
-
-	if len(projects) == 0 {
-		return nil, fmt.Errorf("no projects found for organization %s", org)
-	}
+	// Step 2: Select project
 
 	var selectedProjectIndex int
 	projectOptions := make([]huh.Option[int], len(projects))
@@ -214,7 +275,8 @@ func CollectContextConfiguration() (*config.Context, error) {
 
 	// Create and validate configuration
 	ctx := &config.Context{
-		Org:         org,
+		OwnerType:   ownerType,
+		Owner:       owner,
 		ProjectID:   projectID,
 		ProjectName: projectName,
 		DefaultRepo: defaultRepo,

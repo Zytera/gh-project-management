@@ -44,7 +44,7 @@ func CreateEpicForm(ctx context.Context) error {
 
 	// Create the issue after form completion
 	fmt.Println("\n🔧 Creating epic...")
-	issue, err := gh.CreateIssueWithTemplate(ctx, cfg.Org, cfg.DefaultRepo, name, gh.TemplateEpic)
+	issue, err := gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, name, gh.TemplateEpic)
 	if err != nil {
 		return fmt.Errorf("failed to create epic: %w", err)
 	}
@@ -88,7 +88,7 @@ func CreateUserStoryForm(ctx context.Context) error {
 	}
 
 	fmt.Println("\n🔧 Creating user story...")
-	issue, err := gh.CreateIssueWithTemplate(ctx, cfg.Org, cfg.DefaultRepo, name, gh.TemplateUserStory)
+	issue, err := gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, name, gh.TemplateUserStory)
 	if err != nil {
 		return fmt.Errorf("failed to create user story: %w", err)
 	}
@@ -129,7 +129,7 @@ func CreateTaskForm(ctx context.Context) error {
 	}
 
 	fmt.Println("\n🔧 Creating task...")
-	issue, err := gh.CreateIssueWithTemplate(ctx, cfg.Org, cfg.DefaultRepo, name, gh.TemplateTask)
+	issue, err := gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, name, gh.TemplateTask)
 	if err != nil {
 		return fmt.Errorf("failed to create task: %w", err)
 	}

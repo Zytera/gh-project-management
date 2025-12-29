@@ -10,7 +10,7 @@ import (
 
 // CreateIssueParams contains parameters for creating an issue
 type CreateIssueParams struct {
-	Org      string
+	Owner    string
 	Repo     string
 	Title    string
 	Template string // epic, user-story, task
@@ -18,17 +18,17 @@ type CreateIssueParams struct {
 
 // CreateEpic creates an epic issue
 func CreateEpic(ctx context.Context, cfg *config.Config, title string) (*gh.Issue, error) {
-	return gh.CreateIssueWithTemplate(ctx, cfg.Org, cfg.DefaultRepo, title, gh.TemplateEpic)
+	return gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, title, gh.TemplateEpic)
 }
 
 // CreateUserStory creates a user story issue
 func CreateUserStory(ctx context.Context, cfg *config.Config, title string) (*gh.Issue, error) {
-	return gh.CreateIssueWithTemplate(ctx, cfg.Org, cfg.DefaultRepo, title, gh.TemplateUserStory)
+	return gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, title, gh.TemplateUserStory)
 }
 
 // CreateTask creates a task issue
 func CreateTask(ctx context.Context, cfg *config.Config, title string) (*gh.Issue, error) {
-	return gh.CreateIssueWithTemplate(ctx, cfg.Org, cfg.DefaultRepo, title, gh.TemplateTask)
+	return gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, title, gh.TemplateTask)
 }
 
 // CreateIssue creates an issue with custom parameters
@@ -37,8 +37,8 @@ func CreateIssue(ctx context.Context, params CreateIssueParams) (*gh.Issue, erro
 		return nil, fmt.Errorf("title is required")
 	}
 
-	if params.Org == "" || params.Repo == "" {
-		return nil, fmt.Errorf("org and repo are required")
+	if params.Owner == "" || params.Repo == "" {
+		return nil, fmt.Errorf("owner and repo are required")
 	}
 
 	templateName := params.Template
@@ -46,5 +46,5 @@ func CreateIssue(ctx context.Context, params CreateIssueParams) (*gh.Issue, erro
 		templateName = gh.TemplateTask
 	}
 
-	return gh.CreateIssueWithTemplate(ctx, params.Org, params.Repo, params.Title, templateName)
+	return gh.CreateIssueWithTemplate(ctx, params.Owner, params.Repo, params.Title, templateName)
 }
