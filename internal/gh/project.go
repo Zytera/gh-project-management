@@ -158,6 +158,60 @@ func FindFieldByName(fields []Field, name string) *Field {
 	return nil
 }
 
+// AddOptionsToField adds new options to an existing single-select field
+func AddOptionsToField(ctx context.Context, projectID, fieldID string, options map[string]FieldColor) error {
+	client, err := api.DefaultGraphQLClient()
+	if err != nil {
+		return fmt.Errorf("failed to create GraphQL client: %w", err)
+	}
+
+	// Build options array
+	singleSelectOptions := make([]map[string]string, 0, len(options))
+	for name, color := range options {
+		singleSelectOptions = append(singleSelectOptions, map[string]string{
+			"name":        name,
+			"color":       string(color),
+			"description": "",
+		})
+	}
+
+	mutation := `
+		mutation($projectId: ID!, $fieldId: ID!, $singleSelectOptions: [ProjectV2SingleSelectFieldOptionInput!]) {
+			updateProjectV2Field(input: {
+				projectId: $projectId,
+				fieldId: $fieldId,
+				singleSelectOptions: $singleSelectOptions
+			}) {
+				projectV2Field {
+					... on ProjectV2SingleSelectField {
+						id
+						name
+					}
+				}
+			}
+		}
+	`
+
+	variables := map[string]interface{}{
+		"projectId":           projectID,
+		"fieldId":             fieldID,
+		"singleSelectOptions": singleSelectOptions,
+	}
+
+	var response struct {
+		UpdateProjectV2Field struct {
+			ProjectV2Field Field `json:"projectV2Field"`
+		} `json:"updateProjectV2Field"`
+	}
+
+	err = client.DoWithContext(ctx, mutation, variables, &response)
+	if err != nil {
+		return fmt.Errorf("failed to update field options: %w", err)
+	}
+
+	return nil
+}
+
 // CreateSingleSelectField creates a new single-select field with options
 func CreateSingleSelectField(ctx context.Context, projectID, fieldName string, options map[string]FieldColor) (*Field, error) {
 	client, err := api.DefaultGraphQLClient()
@@ -219,7 +273,8 @@ func CreateSingleSelectField(ctx context.Context, projectID, fieldName string, o
 	return &response.CreateProjectV2Field.ProjectV2Field, nil
 }
 
-// EnsureTeamField checks if the Team field exists, and creates it if it doesn't
+// EnsureTeamField checks if the Team field exists, creates it if it doesn't,
+// and ensures all team options are present
 func EnsureTeamField(ctx context.Context, projectID string, teams map[string]string) (*Field, error) {
 	// First, check if field exists
 	fields, err := GetProjectFields(ctx, projectID)
@@ -229,11 +284,8 @@ func EnsureTeamField(ctx context.Context, projectID string, teams map[string]str
 
 	// Look for existing Team field
 	existingField := FindFieldByName(fields, "Team")
-	if existingField != nil {
-		return existingField, nil
-	}
 
-	// Create Team field with team names as options
+	// Prepare team options
 	teamOptions := make(map[string]FieldColor)
 	colorIndex := 0
 	for teamName := range teams {
@@ -241,10 +293,134 @@ func EnsureTeamField(ctx context.Context, projectID string, teams map[string]str
 		colorIndex++
 	}
 
-	newField, err := CreateSingleSelectField(ctx, projectID, "Team", teamOptions)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Team field: %w", err)
+	// If field doesn't exist, create it
+	if existingField == nil {
+		newField, err := CreateSingleSelectField(ctx, projectID, "Team", teamOptions)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Team field: %w", err)
+		}
+		return newField, nil
 	}
 
-	return newField, nil
+	// Field exists, check if all team options are present
+	existingOptions := make(map[string]bool)
+	for _, opt := range existingField.Options {
+		existingOptions[opt.Name] = true
+	}
+
+	// Find missing options
+	missingOptions := make(map[string]FieldColor)
+	for teamName, color := range teamOptions {
+		if !existingOptions[teamName] {
+			missingOptions[teamName] = color
+		}
+	}
+
+	// If there are missing options, add them
+	if len(missingOptions) > 0 {
+		// We need to include ALL options (existing + new) when updating
+		allOptions := make(map[string]FieldColor)
+
+		// Add existing options (preserve their colors)
+		for _, opt := range existingField.Options {
+			if opt.Color != "" {
+				allOptions[opt.Name] = opt.Color
+			} else {
+				allOptions[opt.Name] = ColorGray
+			}
+		}
+
+		// Add new options
+		for name, color := range missingOptions {
+			allOptions[name] = color
+		}
+
+		if err := AddOptionsToField(ctx, projectID, existingField.ID, allOptions); err != nil {
+			return nil, fmt.Errorf("failed to add missing team options: %w", err)
+		}
+
+		// Refresh field data
+		fields, err = GetProjectFields(ctx, projectID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to refresh project fields: %w", err)
+		}
+		existingField = FindFieldByName(fields, "Team")
+	}
+
+	return existingField, nil
+}
+
+// EnsurePriorityField checks if the Priority field exists, creates it if it doesn't,
+// and ensures all priority options are present with correct values
+func EnsurePriorityField(ctx context.Context, projectID string) (*Field, error) {
+	// First, check if field exists
+	fields, err := GetProjectFields(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get project fields: %w", err)
+	}
+
+	// Look for existing Priority field
+	existingField := FindFieldByName(fields, "Priority")
+
+	// If field doesn't exist, create it
+	if existingField == nil {
+		newField, err := CreateSingleSelectField(ctx, projectID, "Priority", PriorityLevels)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Priority field: %w", err)
+		}
+		return newField, nil
+	}
+
+	// Field exists, check if all priority options are present
+	existingOptions := make(map[string]bool)
+	for _, opt := range existingField.Options {
+		existingOptions[opt.Name] = true
+	}
+
+	// Find missing options
+	missingOptions := make(map[string]FieldColor)
+	for priorityName, color := range PriorityLevels {
+		if !existingOptions[priorityName] {
+			missingOptions[priorityName] = color
+		}
+	}
+
+	// If there are missing options, add them
+	if len(missingOptions) > 0 {
+		// We need to include ALL options (existing + new) when updating
+		allOptions := make(map[string]FieldColor)
+
+		// Add existing options (preserve their colors if they match our expected priorities)
+		for _, opt := range existingField.Options {
+			if expectedColor, exists := PriorityLevels[opt.Name]; exists {
+				// This is a known priority, use expected color
+				allOptions[opt.Name] = expectedColor
+			} else {
+				// Unknown priority option, preserve it with its existing color
+				if opt.Color != "" {
+					allOptions[opt.Name] = opt.Color
+				} else {
+					allOptions[opt.Name] = ColorGray
+				}
+			}
+		}
+
+		// Add missing priority options
+		for name, color := range missingOptions {
+			allOptions[name] = color
+		}
+
+		if err := AddOptionsToField(ctx, projectID, existingField.ID, allOptions); err != nil {
+			return nil, fmt.Errorf("failed to add missing priority options: %w", err)
+		}
+
+		// Refresh field data
+		fields, err = GetProjectFields(ctx, projectID)
+		if err != nil {
+			return nil, fmt.Errorf("failed to refresh project fields: %w", err)
+		}
+		existingField = FindFieldByName(fields, "Priority")
+	}
+
+	return existingField, nil
 }

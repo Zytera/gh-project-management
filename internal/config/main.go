@@ -25,12 +25,13 @@ const (
 
 // Context represents a project configuration
 type Context struct {
-	OwnerType   OwnerType         `yaml:"owner_type"`
-	Owner       string            `yaml:"owner"`
-	ProjectID   string            `yaml:"project_id"`
-	ProjectName string            `yaml:"project_name"`
-	DefaultRepo string            `yaml:"default_repo"`
-	TeamRepos   map[string]string `yaml:"team_repos"` // Team name -> Repo name
+	OwnerType            OwnerType         `yaml:"owner_type"`
+	Owner                string            `yaml:"owner"`
+	ProjectID            string            `yaml:"project_id"`
+	ProjectName          string            `yaml:"project_name"`
+	DefaultRepo          string            `yaml:"default_repo"`
+	TeamRepos            map[string]string `yaml:"team_repos"` // Team name -> Repo name
+	CustomFieldsVerified bool              `yaml:"custom_fields_verified,omitempty"`
 }
 
 // Config is the active context configuration (for backwards compatibility in code)
@@ -193,4 +194,67 @@ func (c *Context) Validate() error {
 		return fmt.Errorf("at least one team repository is required")
 	}
 	return nil
+}
+
+// MarkCustomFieldsVerified marks custom fields as verified for the current context
+func MarkCustomFieldsVerified() error {
+	globalConfig, err := LoadGlobal()
+	if err != nil {
+		return err
+	}
+
+	if globalConfig.CurrentContext == "" {
+		return fmt.Errorf("no current context set")
+	}
+
+	ctx, exists := globalConfig.Contexts[globalConfig.CurrentContext]
+	if !exists {
+		return fmt.Errorf("current context '%s' not found", globalConfig.CurrentContext)
+	}
+
+	ctx.CustomFieldsVerified = true
+	globalConfig.Contexts[globalConfig.CurrentContext] = ctx
+
+	return Save(globalConfig)
+}
+
+// InvalidateCustomFields marks custom fields as unverified for the current context
+func InvalidateCustomFields() error {
+	globalConfig, err := LoadGlobal()
+	if err != nil {
+		return err
+	}
+
+	if globalConfig.CurrentContext == "" {
+		return fmt.Errorf("no current context set")
+	}
+
+	ctx, exists := globalConfig.Contexts[globalConfig.CurrentContext]
+	if !exists {
+		return fmt.Errorf("current context '%s' not found", globalConfig.CurrentContext)
+	}
+
+	ctx.CustomFieldsVerified = false
+	globalConfig.Contexts[globalConfig.CurrentContext] = ctx
+
+	return Save(globalConfig)
+}
+
+// AreCustomFieldsVerified checks if custom fields have been verified
+func AreCustomFieldsVerified() (bool, error) {
+	globalConfig, err := LoadGlobal()
+	if err != nil {
+		return false, err
+	}
+
+	if globalConfig.CurrentContext == "" {
+		return false, fmt.Errorf("no current context set")
+	}
+
+	ctx, exists := globalConfig.Contexts[globalConfig.CurrentContext]
+	if !exists {
+		return false, fmt.Errorf("current context '%s' not found", globalConfig.CurrentContext)
+	}
+
+	return ctx.CustomFieldsVerified, nil
 }
