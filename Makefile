@@ -2,7 +2,7 @@ BINARY_NAME=gh-project-management
 
 ## build: Build the binary
 build:
-	go build -o $(BINARY_NAME) ./cmd/gh-project-management
+	go build -o $(BINARY_NAME) .
 
 ## install: Install as gh extension
 install: build
