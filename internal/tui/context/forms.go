@@ -190,11 +190,11 @@ func CollectContextConfiguration() (*config.Context, error) {
 		),
 	)
 
-	defaultRepo = repoNames[selectedDefaultRepoIndex]
-
 	if err := repoForm.Run(); err != nil {
 		return nil, fmt.Errorf("error getting default repo: %w", err)
 	}
+
+	defaultRepo = repoNames[selectedDefaultRepoIndex]
 
 	// Step 4: Team repositories
 	fmt.Println()
