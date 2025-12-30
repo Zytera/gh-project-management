@@ -55,3 +55,11 @@ var DefaultTeamColors = []FieldColor{
 	ColorOrange,
 	ColorPurple,
 }
+
+// PriorityLevels defines the priority levels and their colors
+var PriorityLevels = map[string]FieldColor{
+	"Critical": ColorRed,
+	"High":     ColorOrange,
+	"Medium":   ColorYellow,
+	"Low":      ColorGray,
+}

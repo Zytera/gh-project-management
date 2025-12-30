@@ -44,7 +44,7 @@ func AddContext(params AddContextParams) error {
 		return fmt.Errorf("invalid configuration: %w", err)
 	}
 
-	// Ensure Team field exists in the project
+	// Ensure Team and Priority fields exist in the project
 	if params.ProjectID != "" && len(params.TeamRepos) > 0 {
 		// Get project node ID
 		var projects []gh.Project
@@ -59,6 +59,7 @@ func AddContext(params AddContextParams) error {
 				if fmt.Sprintf("%d", p.Number) == params.ProjectID {
 					bgCtx := context.Background()
 					_, _ = gh.EnsureTeamField(bgCtx, p.ID, params.TeamRepos)
+					_, _ = gh.EnsurePriorityField(bgCtx, p.ID)
 					break
 				}
 			}
@@ -133,4 +134,67 @@ func GetCurrentContext() (*config.Context, string, error) {
 	}
 
 	return &ctx, globalConfig.CurrentContext, nil
+}
+
+// EnsureCustomFields ensures Team and Priority custom fields exist in the project
+// Uses cached verification status to avoid unnecessary API calls
+func EnsureCustomFields(ctx context.Context, projectID string, teams map[string]string) error {
+	// Check if fields have already been verified
+	verified, err := config.AreCustomFieldsVerified()
+	if err != nil {
+		return fmt.Errorf("failed to check custom fields verification status: %w", err)
+	}
+
+	// If already verified, skip API calls
+	if verified {
+		return nil
+	}
+
+	// Get project node ID from project number
+	// Note: projectID in config is the project number, we need the node ID
+	var projects []gh.Project
+	currentCtx, _, err := GetCurrentContext()
+	if err != nil {
+		return fmt.Errorf("failed to get current context: %w", err)
+	}
+
+	if currentCtx.OwnerType == config.OwnerTypeOrg {
+		projects, err = gh.ListOrgProjects(currentCtx.Owner)
+	} else {
+		projects, err = gh.ListUserProjects()
+	}
+
+	if err != nil {
+		return fmt.Errorf("failed to list projects: %w", err)
+	}
+
+	// Find the project node ID
+	var nodeID string
+	for _, p := range projects {
+		if fmt.Sprintf("%d", p.Number) == projectID {
+			nodeID = p.ID
+			break
+		}
+	}
+
+	if nodeID == "" {
+		return fmt.Errorf("project #%s not found", projectID)
+	}
+
+	// Ensure Team field exists
+	if _, err := gh.EnsureTeamField(ctx, nodeID, teams); err != nil {
+		return fmt.Errorf("failed to ensure Team field: %w", err)
+	}
+
+	// Ensure Priority field exists
+	if _, err := gh.EnsurePriorityField(ctx, nodeID); err != nil {
+		return fmt.Errorf("failed to ensure Priority field: %w", err)
+	}
+
+	// Mark fields as verified
+	if err := config.MarkCustomFieldsVerified(); err != nil {
+		return fmt.Errorf("failed to mark custom fields as verified: %w", err)
+	}
+
+	return nil
 }

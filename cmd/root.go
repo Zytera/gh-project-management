@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/Zytera/gh-project-management/internal/config"
+	pkgcontext "github.com/Zytera/gh-project-management/pkg/context"
 	"github.com/spf13/cobra"
 )
 
@@ -44,6 +45,12 @@ func Execute() int {
 			return 1
 		}
 		ctx = context.WithValue(context.Background(), config.ConfigKey{}, cfg)
+
+		// Ensure custom fields (Team and Priority) exist in the project
+		if err := pkgcontext.EnsureCustomFields(ctx, cfg.ProjectID, cfg.TeamRepos); err != nil {
+			fmt.Fprintf(os.Stderr, "Warning: Failed to ensure custom fields: %v\n", err)
+			// Don't fail, just warn - the fields might already exist or can be created later
+		}
 	} else {
 		ctx = context.Background()
 	}

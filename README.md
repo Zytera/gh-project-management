@@ -12,17 +12,47 @@ A GitHub CLI extension for managing projects with hierarchical issues (Epics, Us
 
 ## Requirements
 
-- [Go](https://golang.org/dl/) (for development)
-- [GitHub CLI](https://cli.github.com/)
+- [GitHub CLI](https://cli.github.com/) v2.0.0 or higher
+- GitHub token with the following scopes:
+  - `repo` - Access to repositories
+  - `read:org` - Read organization data
+  - `read:project` - **Required** for GitHub Projects v2 API
+  - `write:project` - **Required** to create/update custom fields
+
+### Authentication Setup
+
+Before using this extension, ensure your GitHub CLI token has the necessary scopes:
+
+```bash
+# Add required project scopes to your GitHub token
+gh auth refresh -s project
+
+# Verify authentication
+gh auth status
+```
+
+You should see `✓ Token scopes: ... project, read:project ...` in the output.
 
 ## Installation
+
+### For Users
+
+```bash
+# Install directly from GitHub
+gh extension install Zytera/gh-project-management
+```
+
+### For Development
 
 ```bash
 # Clone the repository
 git clone https://github.com/Zytera/gh-project-management
 cd gh-project-management
 
-# Build and install
+# Install dependencies
+go mod tidy
+
+# Build and install as gh extension
 make dev
 ```
 
@@ -164,6 +194,24 @@ Epic (in default repository)
 - **TUI Framework**: Huh
 - **GitHub API**: go-gh (GraphQL)
 - **Configuration**: YAML with kubectl-style contexts
+
+## Troubleshooting
+
+### Token Scope Errors
+
+**Error:** `Your token has not been granted the required scopes... The 'id' field requires ['read:project']`
+
+**Solution:** Your GitHub token is missing the `project` scopes. Run:
+
+```bash
+gh auth refresh -s project
+```
+
+This will prompt you to authorize the additional scopes in your browser. After authorizing, verify with:
+
+```bash
+gh auth status
+```
 
 ## License
 

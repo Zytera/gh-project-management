@@ -174,25 +174,27 @@ func CollectContextConfiguration() (*config.Context, error) {
 	// Step 3: Default repository
 	fmt.Println()
 
+	var selectedDefaultRepoIndex int
+	repoNamesOptions := make([]huh.Option[int], len(repoNames))
+	for i, p := range repoNames {
+		repoNamesOptions[i] = huh.NewOption(p, i)
+	}
+
 	repoForm := huh.NewForm(
 		huh.NewGroup(
-			huh.NewInput().
+			huh.NewSelect[int]().
 				Title("Default repository").
 				Description("Repository for Epics/User Stories and issue templates").
-				Suggestions(repoNames).
-				Value(&defaultRepo).
-				Validate(func(s string) error {
-					if len(s) == 0 {
-						return errors.New("default repository cannot be empty")
-					}
-					return nil
-				}),
+				Options(repoNamesOptions...).
+				Value(&selectedDefaultRepoIndex),
 		),
 	)
 
 	if err := repoForm.Run(); err != nil {
 		return nil, fmt.Errorf("error getting default repo: %w", err)
 	}
+
+	defaultRepo = repoNames[selectedDefaultRepoIndex]
 
 	// Step 4: Team repositories
 	fmt.Println()
