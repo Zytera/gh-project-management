@@ -1,121 +1,49 @@
 package gh
 
-// Template names
-const (
-	TemplateEpic      = "epic"
-	TemplateUserStory = "user-story"
-	TemplateTask      = "task"
+import (
+	"context"
+	"encoding/base64"
+	"fmt"
+
+	"github.com/Zytera/gh-project-management/internal/templates"
+	"github.com/cli/go-gh/v2/pkg/api"
 )
 
-var templates = map[string]string{
-	TemplateEpic:      epicTemplate,
-	TemplateUserStory: userStoryTemplate,
-	TemplateTask:      taskTemplate,
-}
-
-// GetTemplate returns the template content for the given template name
-func GetTemplate(name string) string {
-	if tmpl, ok := templates[name]; ok {
-		return tmpl
+// GetTemplateFromRepo fetches a template file from the repository
+func GetTemplateFromRepo(ctx context.Context, owner, repo, issueType string) (*templates.IssueTemplate, string, error) {
+	client, err := api.DefaultRESTClient()
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to create REST client: %w", err)
 	}
-	return ""
-}
 
-// ListTemplates returns all available template names
-func ListTemplates() []string {
-	names := make([]string, 0, len(templates))
-	for name := range templates {
-		names = append(names, name)
+	// Get template file name
+	templateFile := templates.GetTemplateFileName(issueType)
+	path := fmt.Sprintf(".github/ISSUE_TEMPLATE/%s", templateFile)
+
+	// Fetch file content from repo
+	var response struct {
+		Content string `json:"content"`
+		SHA     string `json:"sha"`
 	}
-	return names
+
+	err = client.Get(fmt.Sprintf("repos/%s/%s/contents/%s", owner, repo, path), &response)
+	if err != nil {
+		// File doesn't exist, return nil (will use default template)
+		return nil, "", nil
+	}
+
+	// Decode base64 content
+	content, err := base64.StdEncoding.DecodeString(response.Content)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to decode template content: %w", err)
+	}
+
+	// Parse template
+	template, err := templates.ParseTemplate(content)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to parse template from repo: %w", err)
+	}
+
+	template.LastUpdated = response.SHA
+	return template, response.SHA, nil
 }
-
-const epicTemplate = `
-### 📝 Descripción
-
-Sistema completo de... incluyendo:
-- Funcionalidad 1
-- Funcionalidad 2
-- Funcionalidad 3
-
-
-### 🎯 Objetivo
-
-Permitir a los usuarios...
-
-### 📦 Historias Incluidas
-
-### Historia 1: [Nombre]
-Descripción breve de la historia
-
-### Historia 2: [Nombre]
-Descripción breve de la historia
-
-
-### 🎯 Acceptance Criteria
-
-- ✅ Criterio 1
-- ✅ Criterio 2
-- ✅ Criterio 3
-
-
-### 👥 Equipos Involucrados
-
-- **Backend**: Descripción del trabajo
-- **App**: Descripción del trabajo
-- **Web**: Descripción del trabajo
-- **Auth**: Descripción del trabajo
-
-
-### 📊 Estimación
-
-- **Historias:** X
-- **Tareas estimadas:** ~X
-- **Complejidad:** Alta/Media/Baja
-
-
-### 📝 Notas Técnicas
-
-- Nota técnica 1
-- Nota técnica 2
-`
-
-const userStoryTemplate = `
-### 📝 Historia de Usuario
-
-Como [tipo de usuario]
-Quiero [acción/funcionalidad]
-Para [beneficio/objetivo]
-
-### 🎯 Acceptance Criteria
-
-- ✅ Criterio 1
-- ✅ Criterio 2
-- ✅ Criterio 3
-
-### 📋 Tareas
-
-<!-- Las tareas se agregarán automáticamente aquí -->
-
-### 📝 Notas Técnicas
-
-- Nota 1
-- Nota 2
-`
-
-const taskTemplate = `
-### 📝 Descripción
-
-Descripción detallada de la tarea...
-
-### ✅ Checklist
-
-- [ ] Subtarea 1
-- [ ] Subtarea 2
-- [ ] Subtarea 3
-
-### 📝 Notas
-
-- Nota 1
-- Nota 2
-`

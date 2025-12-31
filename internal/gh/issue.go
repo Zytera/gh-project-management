@@ -100,9 +100,3 @@ func CreateIssue(ctx context.Context, owner, repo, title, body string) (*Issue, 
 
 	return &createResp.CreateIssue.Issue, nil
 }
-
-// CreateIssueWithTemplate creates an issue using a predefined template
-func CreateIssueWithTemplate(ctx context.Context, owner, repo, title, templateName string) (*Issue, error) {
-	body := GetTemplate(templateName)
-	return CreateIssue(ctx, owner, repo, title, body)
-}

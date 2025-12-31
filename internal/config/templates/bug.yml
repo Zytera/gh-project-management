@@ -1,0 +1,97 @@
+name: Bug Report
+description: Template for reporting a bug or defect
+title: "[Bug] "
+type: "Bug"
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 🐛 Bug Report Template
+        Report a bug or defect found in the system.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Description
+      description: Clear and concise description of the bug
+      placeholder: The system fails when...
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps_to_reproduce
+    attributes:
+      label: 🔄 Steps to Reproduce
+      description: Detailed steps to reproduce the bug
+      placeholder: |
+        1. Go to '...'
+        2. Click on '...'
+        3. Scroll down to '...'
+        4. See error
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected_behavior
+    attributes:
+      label: ✅ Expected Behavior
+      description: What should happen
+      placeholder: The system should...
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual_behavior
+    attributes:
+      label: ❌ Actual Behavior
+      description: What actually happens
+      placeholder: Instead, the system...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: severity
+    attributes:
+      label: 🚨 Severity
+      description: How severe is this bug?
+      options:
+        - Critical - System down or data loss
+        - High - Major functionality broken
+        - Medium - Feature not working as expected
+        - Low - Minor issue or cosmetic
+    validations:
+      required: true
+
+  - type: textarea
+    id: environment
+    attributes:
+      label: 🖥️ Environment
+      description: Where does this bug occur?
+      placeholder: |
+        - **Platform:** Web/Mobile/Both
+        - **Browser/Device:** Chrome 120 / iPhone 15
+        - **OS:** Windows 11 / iOS 17
+        - **Version:** v1.2.3
+    validations:
+      required: false
+
+  - type: textarea
+    id: screenshots
+    attributes:
+      label: 📸 Screenshots/Logs
+      description: Add screenshots, error logs, or stack traces
+      placeholder: Paste screenshots or error messages here
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: 📝 Additional Context
+      description: Any other relevant information
+      placeholder: |
+        - This started happening after...
+        - Related to issue #...
+    validations:
+      required: false
