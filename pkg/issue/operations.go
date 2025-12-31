@@ -1,50 +1,52 @@
 package issue
 
-import (
-	"context"
-	"fmt"
+// TODO: This file will be reimplemented with the new template system
 
-	"github.com/Zytera/gh-project-management/internal/config"
-	"github.com/Zytera/gh-project-management/internal/gh"
-)
+// import (
+// 	"context"
+// 	"fmt"
 
-// CreateIssueParams contains parameters for creating an issue
-type CreateIssueParams struct {
-	Owner    string
-	Repo     string
-	Title    string
-	Template string // epic, user-story, task
-}
+// 	"github.com/Zytera/gh-project-management/internal/config"
+// 	"github.com/Zytera/gh-project-management/internal/gh"
+// )
 
-// CreateEpic creates an epic issue
-func CreateEpic(ctx context.Context, cfg *config.Config, title string) (*gh.Issue, error) {
-	return gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, title, gh.TemplateEpic)
-}
+// // CreateIssueParams contains parameters for creating an issue
+// type CreateIssueParams struct {
+// 	Owner    string
+// 	Repo     string
+// 	Title    string
+// 	Template string // epic, user-story, task
+// }
 
-// CreateUserStory creates a user story issue
-func CreateUserStory(ctx context.Context, cfg *config.Config, title string) (*gh.Issue, error) {
-	return gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, title, gh.TemplateUserStory)
-}
+// // CreateEpic creates an epic issue
+// func CreateEpic(ctx context.Context, cfg *config.Config, title string) (*gh.Issue, error) {
+// 	return gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, title, gh.TemplateEpic)
+// }
 
-// CreateTask creates a task issue
-func CreateTask(ctx context.Context, cfg *config.Config, title string) (*gh.Issue, error) {
-	return gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, title, gh.TemplateTask)
-}
+// // CreateUserStory creates a user story issue
+// func CreateUserStory(ctx context.Context, cfg *config.Config, title string) (*gh.Issue, error) {
+// 	return gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, title, gh.TemplateUserStory)
+// }
 
-// CreateIssue creates an issue with custom parameters
-func CreateIssue(ctx context.Context, params CreateIssueParams) (*gh.Issue, error) {
-	if params.Title == "" {
-		return nil, fmt.Errorf("title is required")
-	}
+// // CreateTask creates a task issue
+// func CreateTask(ctx context.Context, cfg *config.Config, title string) (*gh.Issue, error) {
+// 	return gh.CreateIssueWithTemplate(ctx, cfg.Owner, cfg.DefaultRepo, title, gh.TemplateTask)
+// }
 
-	if params.Owner == "" || params.Repo == "" {
-		return nil, fmt.Errorf("owner and repo are required")
-	}
+// // CreateIssue creates an issue with custom parameters
+// func CreateIssue(ctx context.Context, params CreateIssueParams) (*gh.Issue, error) {
+// 	if params.Title == "" {
+// 		return nil, fmt.Errorf("title is required")
+// 	}
 
-	templateName := params.Template
-	if templateName == "" {
-		templateName = gh.TemplateTask
-	}
+// 	if params.Owner == "" || params.Repo == "" {
+// 		return nil, fmt.Errorf("owner and repo are required")
+// 	}
 
-	return gh.CreateIssueWithTemplate(ctx, params.Owner, params.Repo, params.Title, templateName)
-}
+// 	templateName := params.Template
+// 	if templateName == "" {
+// 		templateName = gh.TemplateTask
+// 	}
+
+// 	return gh.CreateIssueWithTemplate(ctx, params.Owner, params.Repo, params.Title, templateName)
+// }

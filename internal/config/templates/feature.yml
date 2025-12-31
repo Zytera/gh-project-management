@@ -1,0 +1,119 @@
+name: Feature Request
+description: Template for requesting a new feature
+title: "[Feature] "
+type: "Feature"
+labels: ["feature"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 💡 Feature Request Template
+        Suggest a new feature or enhancement.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Description
+      description: Clear and concise description of the feature
+      placeholder: I would like to be able to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: 🎯 Problem Statement
+      description: What problem does this feature solve?
+      placeholder: |
+        Currently, users cannot...
+        This causes issues because...
+    validations:
+      required: true
+
+  - type: textarea
+    id: proposed_solution
+    attributes:
+      label: 💡 Proposed Solution
+      description: How should this feature work?
+      placeholder: |
+        The system should allow users to...
+        When they click on..., it should...
+    validations:
+      required: true
+
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: 🔄 Alternatives Considered
+      description: Other solutions you've considered
+      placeholder: |
+        - Alternative 1: ...
+        - Alternative 2: ...
+    validations:
+      required: false
+
+  - type: dropdown
+    id: priority
+    attributes:
+      label: 📊 Priority
+      description: How important is this feature?
+      options:
+        - Critical - Blocking users
+        - High - Important for users
+        - Medium - Nice to have
+        - Low - Future enhancement
+    validations:
+      required: false
+
+  - type: textarea
+    id: use_cases
+    attributes:
+      label: 🎬 Use Cases
+      description: Specific scenarios where this feature would be used
+      placeholder: |
+        **Use Case 1:**
+        - User: [type of user]
+        - Action: [what they want to do]
+        - Benefit: [why it's valuable]
+
+        **Use Case 2:**
+        - User: [type of user]
+        - Action: [what they want to do]
+        - Benefit: [why it's valuable]
+    validations:
+      required: false
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: ✅ Acceptance Criteria
+      description: How will we know when this feature is complete?
+      placeholder: |
+        - ✅ Users can...
+        - ✅ The system allows...
+        - ✅ When users..., the result is...
+    validations:
+      required: false
+
+  - type: textarea
+    id: technical_considerations
+    attributes:
+      label: 🔧 Technical Considerations
+      description: Any technical aspects to consider
+      placeholder: |
+        - May require integration with...
+        - Could impact performance of...
+        - Needs to be compatible with...
+    validations:
+      required: false
+
+  - type: textarea
+    id: additional_context
+    attributes:
+      label: 📝 Additional Context
+      description: Screenshots, mockups, or other relevant information
+      placeholder: |
+        - Related to issue #...
+        - Similar to feature in...
+    validations:
+      required: false

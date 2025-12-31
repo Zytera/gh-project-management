@@ -159,7 +159,7 @@ func FindFieldByName(fields []Field, name string) *Field {
 }
 
 // AddOptionsToField adds new options to an existing single-select field
-func AddOptionsToField(ctx context.Context, projectID, fieldID string, options map[string]FieldColor) error {
+func AddOptionsToField(ctx context.Context, fieldID string, options map[string]FieldColor) error {
 	client, err := api.DefaultGraphQLClient()
 	if err != nil {
 		return fmt.Errorf("failed to create GraphQL client: %w", err)
@@ -176,9 +176,8 @@ func AddOptionsToField(ctx context.Context, projectID, fieldID string, options m
 	}
 
 	mutation := `
-		mutation($projectId: ID!, $fieldId: ID!, $singleSelectOptions: [ProjectV2SingleSelectFieldOptionInput!]) {
+		mutation($fieldId: ID!, $singleSelectOptions: [ProjectV2SingleSelectFieldOptionInput!]) {
 			updateProjectV2Field(input: {
-				projectId: $projectId,
 				fieldId: $fieldId,
 				singleSelectOptions: $singleSelectOptions
 			}) {
@@ -193,7 +192,6 @@ func AddOptionsToField(ctx context.Context, projectID, fieldID string, options m
 	`
 
 	variables := map[string]interface{}{
-		"projectId":           projectID,
 		"fieldId":             fieldID,
 		"singleSelectOptions": singleSelectOptions,
 	}
@@ -335,7 +333,7 @@ func EnsureTeamField(ctx context.Context, projectID string, teams map[string]str
 			allOptions[name] = color
 		}
 
-		if err := AddOptionsToField(ctx, projectID, existingField.ID, allOptions); err != nil {
+		if err := AddOptionsToField(ctx, existingField.ID, allOptions); err != nil {
 			return nil, fmt.Errorf("failed to add missing team options: %w", err)
 		}
 
@@ -410,7 +408,7 @@ func EnsurePriorityField(ctx context.Context, projectID string) (*Field, error) 
 			allOptions[name] = color
 		}
 
-		if err := AddOptionsToField(ctx, projectID, existingField.ID, allOptions); err != nil {
+		if err := AddOptionsToField(ctx, existingField.ID, allOptions); err != nil {
 			return nil, fmt.Errorf("failed to add missing priority options: %w", err)
 		}
 

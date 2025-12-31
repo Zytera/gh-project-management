@@ -20,6 +20,9 @@ var (
 	contextProjectName string
 	contextDefaultRepo string
 	contextTeamRepos   []string
+
+	// Flags for context update
+	contextReplaceTeams bool
 )
 
 var contextCmd = &cobra.Command{
@@ -82,6 +85,38 @@ var contextDeleteCmd = &cobra.Command{
 	RunE:  runContextDelete,
 }
 
+var contextUpdateCmd = &cobra.Command{
+	Use:   "update <context-name>",
+	Short: "Update an existing context configuration",
+	Long: `Update an existing context configuration.
+You can update project ID, project name, default repo, and team repositories.
+By default, teams are merged with existing ones. Use --replace-teams to replace all teams.`,
+	Example: `  # Add/update teams for a context (merged with existing)
+  gh project-management context update mycontext \
+    --team-repos NewTeam=new-repo,Backend=updated-backend
+
+  # Replace all teams
+  gh project-management context update mycontext \
+    --team-repos Backend=backend,Frontend=frontend \
+    --replace-teams
+
+  # Update project ID
+  gh project-management context update mycontext \
+    --project-id 2
+
+  # Update default repository
+  gh project-management context update mycontext \
+    --default-repo new-default-repo
+
+  # Update multiple fields at once
+  gh project-management context update mycontext \
+    --project-name "New Project Name" \
+    --default-repo new-repo \
+    --team-repos DevOps=devops`,
+	Args: cobra.ExactArgs(1),
+	RunE: runContextUpdate,
+}
+
 func init() {
 	rootCmd.AddCommand(contextCmd)
 	contextCmd.AddCommand(contextListCmd)
@@ -89,6 +124,7 @@ func init() {
 	contextCmd.AddCommand(contextUseCmd)
 	contextCmd.AddCommand(contextAddCmd)
 	contextCmd.AddCommand(contextDeleteCmd)
+	contextCmd.AddCommand(contextUpdateCmd)
 
 	// Add flags for context add
 	contextAddCmd.Flags().StringVar(&contextOwnerType, "owner-type", "", "Owner type: 'user' or 'org'")
@@ -97,6 +133,13 @@ func init() {
 	contextAddCmd.Flags().StringVar(&contextProjectName, "project-name", "", "Project name")
 	contextAddCmd.Flags().StringVar(&contextDefaultRepo, "default-repo", "", "Default repository")
 	contextAddCmd.Flags().StringSliceVar(&contextTeamRepos, "team-repos", []string{}, "Team repositories in format 'team=repo' (e.g., Backend=backend,App=mobile-app)")
+
+	// Add flags for context update
+	contextUpdateCmd.Flags().StringVar(&contextProjectID, "project-id", "", "New project ID")
+	contextUpdateCmd.Flags().StringVar(&contextProjectName, "project-name", "", "New project name")
+	contextUpdateCmd.Flags().StringVar(&contextDefaultRepo, "default-repo", "", "New default repository")
+	contextUpdateCmd.Flags().StringSliceVar(&contextTeamRepos, "team-repos", []string{}, "Team repositories to add/update in format 'team=repo'")
+	contextUpdateCmd.Flags().BoolVar(&contextReplaceTeams, "replace-teams", false, "Replace all teams instead of merging")
 }
 
 // parseTeamRepos converts a slice of "team=repo" strings to a map
@@ -285,6 +328,76 @@ func runContextDelete(cmd *cobra.Command, args []string) error {
 		for name := range globalConfig.Contexts {
 			fmt.Printf("Note: Use 'gh project-management context use %s' to set a new current context\n", name)
 			break
+		}
+	}
+
+	return nil
+}
+
+func runContextUpdate(cmd *cobra.Command, args []string) error {
+	contextName := args[0]
+
+	// Check if at least one flag was provided
+	hasProjectID := cmd.Flags().Changed("project-id")
+	hasProjectName := cmd.Flags().Changed("project-name")
+	hasDefaultRepo := cmd.Flags().Changed("default-repo")
+	hasTeamRepos := cmd.Flags().Changed("team-repos")
+
+	if !hasProjectID && !hasProjectName && !hasDefaultRepo && !hasTeamRepos {
+		return fmt.Errorf("at least one field must be specified to update")
+	}
+
+	params := contextPkg.UpdateContextParams{
+		ContextName:  contextName,
+		ReplaceTeams: contextReplaceTeams,
+	}
+
+	// Set optional parameters
+	if hasProjectID {
+		params.ProjectID = &contextProjectID
+	}
+
+	if hasProjectName {
+		params.ProjectName = &contextProjectName
+	}
+
+	if hasDefaultRepo {
+		params.DefaultRepo = &contextDefaultRepo
+	}
+
+	if hasTeamRepos {
+		teamRepos, err := parseTeamRepos(contextTeamRepos)
+		if err != nil {
+			return fmt.Errorf("invalid team-repos format: %w", err)
+		}
+		params.TeamRepos = teamRepos
+	}
+
+	if err := contextPkg.UpdateContext(params); err != nil {
+		return err
+	}
+
+	fmt.Printf("\n✓ Context '%s' updated successfully\n", contextName)
+
+	// Show what was updated
+	fmt.Println("\nUpdated fields:")
+	if hasProjectID {
+		fmt.Printf("  Project ID: %s\n", contextProjectID)
+	}
+	if hasProjectName {
+		fmt.Printf("  Project Name: %s\n", contextProjectName)
+	}
+	if hasDefaultRepo {
+		fmt.Printf("  Default Repo: %s\n", contextDefaultRepo)
+	}
+	if hasTeamRepos {
+		if contextReplaceTeams {
+			fmt.Println("  Teams (replaced):")
+		} else {
+			fmt.Println("  Teams (merged):")
+		}
+		for team, repo := range params.TeamRepos {
+			fmt.Printf("    %s → %s\n", team, repo)
 		}
 	}
 
