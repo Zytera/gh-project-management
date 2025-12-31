@@ -3,10 +3,12 @@ package issue
 import (
 	"context"
 	"fmt"
+	"os"
 	"strconv"
 
 	"github.com/Zytera/gh-project-management/internal/config"
 	"github.com/Zytera/gh-project-management/internal/gh"
+	"github.com/Zytera/gh-project-management/internal/git"
 	"github.com/Zytera/gh-project-management/internal/templates"
 )
 
@@ -48,46 +50,71 @@ type CreateDynamicIssueParams struct {
 
 // CreateDynamicIssue creates an issue using a dynamic template (from repo or default)
 func CreateDynamicIssue(ctx context.Context, params CreateDynamicIssueParams) (*gh.Issue, error) {
-	// Get template (from repo or default)
-	var template *templates.IssueTemplate
-	var err error
 
-	// Try to get template from repo first
-	repoTemplate, _, repoErr := gh.GetTemplateFromRepo(ctx, params.Config.Owner, params.Config.DefaultRepo, params.IssueType)
-	if repoErr == nil && repoTemplate != nil {
-		// Use template from repo
-		template = repoTemplate
-	} else {
-		// Fall back to default template
-		template, err = templates.GetDefaultTemplate(params.IssueType)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get template for type %s: %w", params.IssueType, err)
-		}
-	}
+	_, _, err := GetTemplate(ctx, params.Config.Owner, params.Config.DefaultRepo, params.IssueType)
+	return nil, err
+	// // Get template (from repo or default)
+	// var template *templates.IssueTemplate
+	// var err error
 
-	// Validate required fields
-	if err := templates.ValidateFields(template, params.Fields); err != nil {
-		return nil, fmt.Errorf("field validation failed: %w", err)
-	}
+	// // Try to get template from repo first
+	// repoTemplate, _, repoErr := getTemplate(ctx, params.Config.Owner, params.Config.DefaultRepo, params.IssueType)
 
-	// Build issue body from template
-	body, err := templates.BuildBodyFromTemplate(template, params.Fields)
+	// if repoErr == nil && repoTemplate != nil {
+	// 	// Use template from repo
+	// 	template = repoTemplate
+	// } else {
+	// 	// Fall back to default template
+	// 	template, err = templates.GetDefaultTemplate(params.IssueType)
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to get template for type %s: %w", params.IssueType, err)
+	// 	}
+	// }
+
+	// // Validate required fields
+	// if err := templates.ValidateFields(template, params.Fields); err != nil {
+	// 	return nil, fmt.Errorf("field validation failed: %w", err)
+	// }
+
+	// // Build issue body from template
+	// body, err := templates.BuildBodyFromTemplate(template, params.Fields)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to build issue body: %w", err)
+	// }
+
+	// // Create issue
+	// issue, err := gh.CreateIssue(ctx, params.Config.Owner, params.Config.DefaultRepo, params.Title, body)
+	// if err != nil {
+	// 	return nil, fmt.Errorf("failed to create issue: %w", err)
+	// }
+
+	// // Assign to project
+	// if err := assignIssueToProject(ctx, params.Config, issue); err != nil {
+	// 	return nil, fmt.Errorf("failed to assign issue to project: %w", err)
+	// }
+
+	// // TODO: Set Issue Type
+
+	// return issue, nil
+}
+
+func GetTemplate(ctx context.Context, owner, repo, issueType string) (*templates.IssueTemplate, string, error) {
+	currentDir, err := os.Getwd()
 	if err != nil {
-		return nil, fmt.Errorf("failed to build issue body: %w", err)
+		return nil, "", fmt.Errorf("failed to get current working directory: %w", err)
 	}
 
-	// Create issue
-	issue, err := gh.CreateIssue(ctx, params.Config.Owner, params.Config.DefaultRepo, params.Title, body)
+	repoName, err := git.GetRepoName(currentDir)
+
 	if err != nil {
-		return nil, fmt.Errorf("failed to create issue: %w", err)
+		return nil, "", fmt.Errorf("failed to get repo name: %w", err)
+	}
+	println(repo + repoName)
+	if repoName == repo {
+		fmt.Println("Using templates from current repository: " + repoName)
 	}
 
-	// Assign to project
-	if err := assignIssueToProject(ctx, params.Config, issue); err != nil {
-		return nil, fmt.Errorf("failed to assign issue to project: %w", err)
-	}
+	return nil, "", nil
 
-	// TODO: Set Issue Type
-
-	return issue, nil
+	// repoTemplate, _, repoErr := gh.GetTemplateFromRepo(ctx,owner, repo, issueType)
 }

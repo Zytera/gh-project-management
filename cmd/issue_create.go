@@ -97,7 +97,7 @@ func runIssueCreate(cmd *cobra.Command, args []string) error {
 	var templateSource string
 
 	// Try to get template from repo first
-	repoTemplate, _, repoErr := gh.GetTemplateFromRepo(ctx, cfg.Owner, cfg.DefaultRepo, issueType)
+	repoTemplate, _, repoErr := issue.GetTemplate(ctx, cfg.Owner, cfg.DefaultRepo, issueType)
 	if repoErr == nil && repoTemplate != nil {
 		template = repoTemplate
 		templateSource = fmt.Sprintf("repository (.github/ISSUE_TEMPLATE/%s)", templates.GetTemplateFileName(issueType))
