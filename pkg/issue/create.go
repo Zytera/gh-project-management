@@ -112,9 +112,35 @@ func GetTemplate(ctx context.Context, owner, repo, issueType string) (*templates
 	println(repo + repoName)
 	if repoName == repo {
 		fmt.Println("Using templates from current repository: " + repoName)
+		return getTemplateFromCurrentDirectory(ctx, owner, repo, issueType)
 	}
 
-	return nil, "", nil
+	return gh.GetTemplateFromRepo(ctx, owner, repo, issueType)
+}
 
-	// repoTemplate, _, repoErr := gh.GetTemplateFromRepo(ctx,owner, repo, issueType)
+func getTemplateFromCurrentDirectory(ctx context.Context, owner, repo, issueType string) (*templates.IssueTemplate, string, error) {
+	currentDir, err := os.Getwd()
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get current working directory: %w", err)
+	}
+
+	templateDir := currentDir + "/.github/ISSUE_TEMPLATE"
+	files, err := os.ReadDir(templateDir)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to read template directory: %w", err)
+	}
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+		// Check if file has .yml or .yaml extension
+		name := file.
+		if len(name) > 4 && (name[len(name)-4:] == ".yml" || (len(name) > 5 && name[len(name)-5:] == ".yaml")) {
+			// TODO: Parse and match template with issueType
+			fmt.Printf("Found template file: %s\n", name)
+		}
+	}
+
+	return nil, "", fmt.Errorf("template not found in current directory")
 }
