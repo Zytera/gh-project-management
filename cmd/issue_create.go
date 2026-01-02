@@ -99,7 +99,10 @@ func runIssueCreate(cmd *cobra.Command, args []string) error {
 	var template *templates.IssueTemplate
 	var templateSource string
 
-	template, templateSource = templates.GetTemplate(ctx, cfg.Owner, cfg.DefaultRepo, issueType)
+	template, templateSource, err = issue.GetTemplate(ctx, cfg.Owner, cfg.DefaultRepo, issueType)
+	if err != nil {
+		return fmt.Errorf("failed to get template for type '%s': %w\n\nAvailable default types: epic, user_story, task, bug, feature", issueType, err)
+	}
 
 	// If --show-fields is set, display fields and exit
 	if showFields {
