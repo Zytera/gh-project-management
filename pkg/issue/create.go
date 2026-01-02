@@ -60,17 +60,9 @@ func CreateDynamicIssue(ctx context.Context, params CreateDynamicIssueParams) (*
 	var template *templates.IssueTemplate
 	var err error
 
-	// Try to get template from repo first
-	repoTemplate, _, repoErr := gh.GetTemplateFromRepo(ctx, params.Config.Owner, params.Config.DefaultRepo, params.IssueType)
-	if repoErr == nil && repoTemplate != nil {
-		// Use template from repo
-		template = repoTemplate
-	} else {
-		// Fall back to default template
-		template, err = templates.GetDefaultTemplate(params.IssueType)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get template for type %s: %w", params.IssueType, err)
-		}
+	template, _, err = GetTemplate(ctx, params.Config.Owner, params.Config.DefaultRepo, params.IssueType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get template for type %s: %w", params.IssueType, err)
 	}
 
 	// Validate required fields
