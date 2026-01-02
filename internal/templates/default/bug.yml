@@ -66,13 +66,9 @@ body:
   - type: textarea
     id: environment
     attributes:
-      label: 🖥️ Environment
+      label: 💻 Environment
       description: Where does this bug occur?
-      placeholder: |
-        - **Platform:** Web/Mobile/Both
-        - **Browser/Device:** Chrome 120 / iPhone 15
-        - **OS:** Windows 11 / iOS 17
-        - **Version:** v1.2.3
+      placeholder: "Platform, Browser/Device, OS, Version"
     validations:
       required: false
 

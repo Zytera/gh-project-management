@@ -153,13 +153,16 @@ The extension uses both **GraphQL** and **REST API** via `github.com/cli/go-gh/v
 
 **No external CLI dependencies**: All GitHub operations use direct API calls.
 
-#### Project Custom Fields Management
+#### Project Custom Fields & Issue Types
 
-Custom field management is one of the core features. The system manages three fields:
+Custom field management is one of the core features. The system manages two project custom fields and uses GitHub's native issue types:
 
+**Project Custom Fields:**
 1. **Team Field**: Single-select field with team options from config
 2. **Priority Field**: Single-select field with fixed levels (Critical/High/Medium/Low)
-3. **Type Field**: Single-select field with GitHub organization issue types (Epic, User Story, Task, Bug, Feature)
+
+**GitHub Native Issue Types:**
+3. **Issue Type**: GitHub organization issue type (automatically created via GraphQL if it doesn't exist)
 
 **Field Creation Flow** (`internal/gh/project.go`):
 

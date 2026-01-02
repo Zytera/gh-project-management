@@ -18,7 +18,8 @@ type Issue struct {
 }
 
 // CreateIssue creates an issue in the specified repository and returns the issue URL
-func CreateIssue(ctx context.Context, owner, repo, title, body string) (*Issue, error) {
+// If issueTypeID is provided, it will set the GitHub issue type
+func CreateIssue(ctx context.Context, owner, repo, title, body, issueTypeID string) (*Issue, error) {
 	if owner == "" || repo == "" {
 		return nil, errors.New("owner and repo cannot be empty")
 	}
@@ -82,12 +83,19 @@ func CreateIssue(ctx context.Context, owner, repo, title, body string) (*Issue, 
 		}
 	`
 
+	input := map[string]interface{}{
+		"repositoryId": repoID,
+		"title":        title,
+		"body":         body,
+	}
+
+	// Add issue type if provided
+	if issueTypeID != "" {
+		input["issueTypeId"] = issueTypeID
+	}
+
 	vars = map[string]interface{}{
-		"input": map[string]interface{}{
-			"repositoryId": repoID,
-			"title":        title,
-			"body":         body,
-		},
+		"input": input,
 	}
 
 	if err := client.DoWithContext(ctx, createIssueQL, vars, &createResp); err != nil {

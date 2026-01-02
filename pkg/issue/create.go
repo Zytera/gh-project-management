@@ -3,22 +3,21 @@ package issue
 import (
 	"context"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/Zytera/gh-project-management/internal/config"
 	"github.com/Zytera/gh-project-management/internal/gh"
-	"github.com/Zytera/gh-project-management/internal/git"
 	"github.com/Zytera/gh-project-management/internal/templates"
 )
 
 // assignIssueToProject assigns an issue to the configured project
-func assignIssueToProject(ctx context.Context, cfg *config.Config, issue *gh.Issue) error {
+// Returns the project item ID
+func assignIssueToProject(ctx context.Context, cfg *config.Config, issue *gh.Issue) (string, error) {
 	// Parse project number
 	projectNumber, err := strconv.Atoi(cfg.ProjectID)
 	if err != nil {
-		return fmt.Errorf("invalid project ID '%s': %w", cfg.ProjectID, err)
+		return "", fmt.Errorf("invalid project ID '%s': %w", cfg.ProjectID, err)
 	}
 
 	// Get project node ID
@@ -29,16 +28,16 @@ func assignIssueToProject(ctx context.Context, cfg *config.Config, issue *gh.Iss
 		projectNodeID, err = gh.GetUserProjectNodeID(ctx, projectNumber)
 	}
 	if err != nil {
-		return fmt.Errorf("failed to get project node ID: %w", err)
+		return "", fmt.Errorf("failed to get project node ID: %w", err)
 	}
 
-	// Add issue to project
-	_, err = gh.AddIssueToProject(ctx, projectNodeID, issue.ID)
+	// Add issue to project and get the project item ID
+	projectItemID, err := gh.AddIssueToProject(ctx, projectNodeID, issue.ID)
 	if err != nil {
-		return fmt.Errorf("failed to add issue to project: %w", err)
+		return "", fmt.Errorf("failed to add issue to project: %w", err)
 	}
 
-	return nil
+	return projectItemID, nil
 }
 
 // CreateDynamicIssueParams contains parameters for creating an issue with a dynamic template
@@ -49,100 +48,94 @@ type CreateDynamicIssueParams struct {
 	Fields    map[string]string
 }
 
+// CreateDynamicIssueResult contains the result of creating an issue
+type CreateDynamicIssueResult struct {
+	Issue         *gh.Issue
+	ProjectItemID string
+}
+
 // CreateDynamicIssue creates an issue using a dynamic template (from repo or default)
-func CreateDynamicIssue(ctx context.Context, params CreateDynamicIssueParams) (*gh.Issue, error) {
+func CreateDynamicIssue(ctx context.Context, params CreateDynamicIssueParams) (*CreateDynamicIssueResult, error) {
+	// Get template (from repo or default)
+	var template *templates.IssueTemplate
+	var err error
 
-	_, _, err := GetTemplate(ctx, params.Config.Owner, params.Config.DefaultRepo, params.IssueType)
-	return nil, err
-	// // Get template (from repo or default)
-	// var template *templates.IssueTemplate
-	// var err error
+	// Try to get template from repo first
+	repoTemplate, _, repoErr := gh.GetTemplateFromRepo(ctx, params.Config.Owner, params.Config.DefaultRepo, params.IssueType)
+	if repoErr == nil && repoTemplate != nil {
+		// Use template from repo
+		template = repoTemplate
+	} else {
+		// Fall back to default template
+		template, err = templates.GetDefaultTemplate(params.IssueType)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get template for type %s: %w", params.IssueType, err)
+		}
+	}
 
-	// // Try to get template from repo first
-	// repoTemplate, _, repoErr := getTemplate(ctx, params.Config.Owner, params.Config.DefaultRepo, params.IssueType)
+	// Validate required fields
+	if err := templates.ValidateFields(template, params.Fields); err != nil {
+		return nil, fmt.Errorf("field validation failed: %w", err)
+	}
 
-	// if repoErr == nil && repoTemplate != nil {
-	// 	// Use template from repo
-	// 	template = repoTemplate
-	// } else {
-	// 	// Fall back to default template
-	// 	template, err = templates.GetDefaultTemplate(params.IssueType)
-	// 	if err != nil {
-	// 		return nil, fmt.Errorf("failed to get template for type %s: %w", params.IssueType, err)
-	// 	}
-	// }
+	// Build issue body from template
+	body, err := templates.BuildBodyFromTemplate(template, params.Fields)
+	if err != nil {
+		return nil, fmt.Errorf("failed to build issue body: %w", err)
+	}
 
-	// // Validate required fields
-	// if err := templates.ValidateFields(template, params.Fields); err != nil {
-	// 	return nil, fmt.Errorf("field validation failed: %w", err)
-	// }
+	// Map issue type to GitHub issue type name
+	issueTypeName := mapIssueTypeToGitHubType(params.IssueType)
 
-	// // Build issue body from template
-	// body, err := templates.BuildBodyFromTemplate(template, params.Fields)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to build issue body: %w", err)
-	// }
+	// Ensure issue type exists and get its ID
+	var issueTypeID string
+	if params.Config.OwnerType == config.OwnerTypeOrg && issueTypeName != "" {
+		// EnsureIssueType will create the type if it doesn't exist
+		issueTypeConfig, err := gh.EnsureIssueType(ctx, params.Config.Owner, issueTypeName, fmt.Sprintf("%s issue type", issueTypeName))
+		if err != nil {
+			// Log warning but continue - issue types might not be available for this org
+			fmt.Printf("⚠️  Warning: Could not ensure issue type '%s': %v\n", issueTypeName, err)
+		} else if issueTypeConfig != nil {
+			issueTypeID = issueTypeConfig.ID
+		}
+	}
 
-	// // Create issue
-	// issue, err := gh.CreateIssue(ctx, params.Config.Owner, params.Config.DefaultRepo, params.Title, body)
-	// if err != nil {
-	// 	return nil, fmt.Errorf("failed to create issue: %w", err)
-	// }
+	// Create issue with issue type
+	issue, err := gh.CreateIssue(ctx, params.Config.Owner, params.Config.DefaultRepo, params.Title, body, issueTypeID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create issue: %w", err)
+	}
 
-	// // Assign to project
-	// if err := assignIssueToProject(ctx, params.Config, issue); err != nil {
-	// 	return nil, fmt.Errorf("failed to assign issue to project: %w", err)
-	// }
+	// Assign to project and get project item ID
+	projectItemID, err := assignIssueToProject(ctx, params.Config, issue)
+	if err != nil {
+		return nil, fmt.Errorf("failed to assign issue to project: %w", err)
+	}
 
-	// // TODO: Set Issue Type
-
-	// return issue, nil
+	return &CreateDynamicIssueResult{
+		Issue:         issue,
+		ProjectItemID: projectItemID,
+	}, nil
 }
 
-func GetTemplate(ctx context.Context, owner, repo, issueType string) (*templates.IssueTemplate, string, error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to get current working directory: %w", err)
-	}
-
-	repoName, err := git.GetRepoName(currentDir)
-
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to get repo name: %w", err)
-	}
-	println(repo + repoName)
-	if repoName == repo {
-		fmt.Println("Using templates from current repository: " + repoName)
-		return getTemplateFromCurrentDirectory(ctx, owner, repo, issueType)
-	}
-
-	return gh.GetTemplateFromRepo(ctx, owner, repo, issueType)
-}
-
-func getTemplateFromCurrentDirectory(ctx context.Context, owner, repo, issueType string) (*templates.IssueTemplate, string, error) {
-	currentDir, err := os.Getwd()
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to get current working directory: %w", err)
-	}
-
-	templateDir := currentDir + "/.github/ISSUE_TEMPLATE"
-	files, err := os.ReadDir(templateDir)
-	if err != nil {
-		return nil, "", fmt.Errorf("failed to read template directory: %w", err)
-	}
-
-	for _, file := range files {
-		if file.IsDir() {
-			continue
+// mapIssueTypeToGitHubType maps template issue type to GitHub issue type name
+func mapIssueTypeToGitHubType(issueType string) string {
+	switch strings.ToLower(issueType) {
+	case "epic":
+		return "Epic"
+	case "story", "user_story", "user story":
+		return "User Story"
+	case "task":
+		return "Task"
+	case "bug":
+		return "Bug"
+	case "feature":
+		return "Feature"
+	default:
+		// For custom types, capitalize first letter
+		if issueType != "" {
+			return strings.ToUpper(string(issueType[0])) + issueType[1:]
 		}
-		// Check if file has .yml or .yaml extension
-		ext := filepath.Ext(file.Name())
-		if ext != ".yml" && ext != ".yaml" {
-			continue
-		}
-		// TODO: Parse and match template with issueType
-		fmt.Printf("Found template file: %s\n", file.Name())
+		return ""
 	}
-
-	return nil, "", fmt.Errorf("template not found in current directory")
 }

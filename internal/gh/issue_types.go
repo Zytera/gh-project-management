@@ -190,3 +190,24 @@ func SyncIssueTypesWithTemplates(ctx context.Context, org string, templatesMap m
 	}
 	return nil
 }
+
+// GetIssueTypeIDByName gets the ID of an issue type by its name
+// Returns empty string if not found or if issue types are not available
+func GetIssueTypeIDByName(ctx context.Context, org, typeName string) (string, error) {
+	// Try to list existing issue types
+	existingTypes, err := ListOrgIssueTypes(ctx, org)
+	if err != nil {
+		// If listing fails, issue types might not be available for this org
+		return "", nil
+	}
+
+	// Search for the type by name
+	for _, issueType := range existingTypes {
+		if issueType.Name == typeName && issueType.IsEnabled {
+			return issueType.ID, nil
+		}
+	}
+
+	// Type not found
+	return "", nil
+}

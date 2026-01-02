@@ -1,13 +1,16 @@
 package templates
 
 import (
+	"embed"
 	"fmt"
-	"os"
 	"path/filepath"
 	"strings"
 
 	"gopkg.in/yaml.v3"
 )
+
+//go:embed default/*.yml
+var templatesFS embed.FS
 
 // ParseTemplate parses a YAML template file
 func ParseTemplate(content []byte) (*IssueTemplate, error) {
@@ -23,12 +26,10 @@ func GetDefaultTemplate(issueType string) (*IssueTemplate, error) {
 	// Map issue type to template file name
 	templateFile := GetTemplateFileName(issueType)
 
-	// Read from embedded config directory
-	templatePath := filepath.Join("internal", "config", "templates", templateFile)
+	// Read from embedded FS (relative to this package)
+	templatePath := filepath.Join("default", templateFile)
 
-	// For now, we'll read directly from the file system
-	// In production, this should use embed.FS
-	content, err := os.ReadFile(templatePath)
+	content, err := templatesFS.ReadFile(templatePath)
 	if err != nil {
 		return nil, fmt.Errorf("default template not found for type %s: %w", issueType, err)
 	}
@@ -36,7 +37,6 @@ func GetDefaultTemplate(issueType string) (*IssueTemplate, error) {
 	return ParseTemplate(content)
 }
 
-// getTemplateFileName maps issue types to template file names
 // GetTemplateFileName returns the template filename for a given issue type
 func GetTemplateFileName(issueType string) string {
 	switch issueType {

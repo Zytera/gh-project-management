@@ -131,7 +131,7 @@ func GetProjectItemID(ctx context.Context, projectID, issueNodeID string) (strin
 	}
 
 	query := `
-		query($projectId: ID!, $issueId: ID!) {
+		query($projectId: ID!) {
 			node(id: $projectId) {
 				... on ProjectV2 {
 					items(first: 100) {
@@ -151,7 +151,6 @@ func GetProjectItemID(ctx context.Context, projectID, issueNodeID string) (strin
 
 	variables := map[string]interface{}{
 		"projectId": projectID,
-		"issueId":   issueNodeID,
 	}
 
 	var response struct {
