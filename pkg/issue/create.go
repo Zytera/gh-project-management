@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strconv"
 
 	"github.com/Zytera/gh-project-management/internal/config"
@@ -135,11 +136,12 @@ func getTemplateFromCurrentDirectory(ctx context.Context, owner, repo, issueType
 			continue
 		}
 		// Check if file has .yml or .yaml extension
-		name := file.
-		if len(name) > 4 && (name[len(name)-4:] == ".yml" || (len(name) > 5 && name[len(name)-5:] == ".yaml")) {
-			// TODO: Parse and match template with issueType
-			fmt.Printf("Found template file: %s\n", name)
+		ext := filepath.Ext(file.Name())
+		if ext != ".yml" && ext != ".yaml" {
+			continue
 		}
+		// TODO: Parse and match template with issueType
+		fmt.Printf("Found template file: %s\n", file.Name())
 	}
 
 	return nil, "", fmt.Errorf("template not found in current directory")
