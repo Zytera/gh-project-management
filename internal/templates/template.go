@@ -73,36 +73,19 @@ func getTemplateFromCurrentDirectory(ctx context.Context, owner, repo, issueType
 		return nil, "", fmt.Errorf("failed to get current working directory: %w", err)
 	}
 
-	templateDir := currentDir + "/.github/ISSUE_TEMPLATE"
-	files, err := os.ReadDir(templateDir)
+	templateFile := GetTemplateFileName(issueType)
+
+	templatePath := currentDir + "/.github/ISSUE_TEMPLATE/" + templateFile
+	content, err := os.ReadFile(templatePath)
+
 	if err != nil {
-		return nil, "", fmt.Errorf("failed to read template directory: %w", err)
+		return nil, "", fmt.Errorf("failed to read template file: %w", err)
 	}
 
-	for _, file := range files {
-		if file.IsDir() {
-			continue
-		}
-		// Check if file has .yml or .yaml extension
-		ext := filepath.Ext(file.Name())
-		if ext != ".yml" && ext != ".yaml" {
-			continue
-		}
-
-		fmt.Printf("Found template file: %s\n", file.Name())
-
-		content, err := templatesFS.ReadFile(file.Name())
-		if err != nil {
-			return nil, "", fmt.Errorf("default template not found for type %s: %w", issueType, err)
-		}
-
-		template, err := ParseTemplate(content)
-		if err != nil {
-			return nil, "", fmt.Errorf("failed to parse template: %w", err)
-		}
-
-		return template, file.Name(), nil
+	template, err := ParseTemplate(content)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to parse template: %w", err)
 	}
 
-	return nil, "", fmt.Errorf("template not found in current directory")
+	return template, "/.github/ISSUE_TEMPLATE/" + templateFile, nil
 }

@@ -16,6 +16,7 @@ func GetTemplate(ctx context.Context, owner string, repo string, issueType strin
 
 	template, templateSource, err = templates.GetTemplateFromLocalRepo(ctx, owner, repo, issueType)
 	if err == nil {
+		fmt.Println("Template found in local repository")
 		return template, templateSource, nil
 	}
 
