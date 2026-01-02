@@ -10,6 +10,7 @@ import (
 	"github.com/Zytera/gh-project-management/internal/gh"
 	"github.com/Zytera/gh-project-management/internal/templates"
 	"github.com/Zytera/gh-project-management/pkg/issue"
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
 
@@ -22,7 +23,6 @@ var (
 	// Custom fields
 	createTeam       string
 	createPriority   string
-	createTypeField  string
 	createNoTransfer bool // Disable automatic transfer when Team is set
 
 	// Dependencies and linking
@@ -87,9 +87,12 @@ func runIssueCreate(cmd *cobra.Command, args []string) error {
 		return fmt.Errorf("failed to load config: %w", err)
 	}
 
-	// Validate type is provided
+	// Prompt for issue type if not provided
 	if issueType == "" {
-		return fmt.Errorf("--type is required. Use --show-fields to see available types")
+		issueType, err = promptForIssueType()
+		if err != nil {
+			return fmt.Errorf("failed to get issue type: %w", err)
+		}
 	}
 
 	// Get template (from repo or default)
@@ -115,9 +118,12 @@ func runIssueCreate(cmd *cobra.Command, args []string) error {
 		return displayTemplateFields(template, templateSource)
 	}
 
-	// Validate title is provided
+	// Prompt for title if not provided
 	if issueTitle == "" {
-		return fmt.Errorf("--title is required")
+		issueTitle, err = promptForTitle()
+		if err != nil {
+			return fmt.Errorf("failed to get issue title: %w", err)
+		}
 	}
 
 	// Parse field values
@@ -130,6 +136,11 @@ func runIssueCreate(cmd *cobra.Command, args []string) error {
 		fieldName := strings.TrimSpace(parts[0])
 		fieldValue := strings.TrimSpace(parts[1])
 		fields[fieldName] = fieldValue
+	}
+
+	// Prompt for template fields interactively if none provided
+	if len(issueFields) == 0 {
+		fields = promptForTemplateFields(template, fields)
 	}
 
 	// Check for missing required fields
@@ -156,6 +167,25 @@ func runIssueCreate(cmd *cobra.Command, args []string) error {
 		}
 		fmt.Printf("\nUse --show-fields to see all available fields.\n")
 		return fmt.Errorf("missing required fields")
+	}
+
+	// Prompt for custom fields if not provided
+	if createTeam == "" {
+		team, err := promptForTeam(cfg)
+		if err != nil {
+			fmt.Printf("⚠️  Warning: Failed to prompt for team: %v\n", err)
+		} else if team != "" {
+			createTeam = team
+		}
+	}
+
+	if createPriority == "" {
+		priority, err := promptForPriority()
+		if err != nil {
+			fmt.Printf("⚠️  Warning: Failed to prompt for priority: %v\n", err)
+		} else if priority != "" {
+			createPriority = priority
+		}
 	}
 
 	// Prompt for parent if not provided
@@ -188,10 +218,13 @@ func runIssueCreate(cmd *cobra.Command, args []string) error {
 		Fields:    fields,
 	}
 
-	createdIssue, err := issue.CreateDynamicIssue(ctx, params)
+	result, err := issue.CreateDynamicIssue(ctx, params)
 	if err != nil {
 		return fmt.Errorf("failed to create issue: %w", err)
 	}
+
+	createdIssue := result.Issue
+	projectItemID := result.ProjectItemID
 
 	fmt.Printf("\n✓ Successfully created issue #%d: %s\n", createdIssue.Number, createdIssue.Title)
 	fmt.Printf("  URL: %s\n", createdIssue.URL)
@@ -213,7 +246,7 @@ func runIssueCreate(cmd *cobra.Command, args []string) error {
 	}
 
 	// Set custom fields if any are specified
-	if createTeam != "" || createPriority != "" || createTypeField != "" {
+	if createTeam != "" || createPriority != "" {
 		fmt.Printf("\nSetting custom fields...\n")
 
 		// Get project number
@@ -231,41 +264,26 @@ func runIssueCreate(cmd *cobra.Command, args []string) error {
 			if err != nil {
 				fmt.Printf("⚠️  Warning: Failed to get project: %v\n", err)
 			} else {
-				// Get project item ID for the issue
-				projectItemID, err := gh.GetProjectItemID(ctx, projectNodeID, createdIssue.ID)
+				// Get project fields
+				fields, err := gh.GetProjectFields(ctx, projectNodeID)
 				if err != nil {
-					fmt.Printf("⚠️  Warning: Failed to get project item: %v\n", err)
+					fmt.Printf("⚠️  Warning: Failed to get project fields: %v\n", err)
 				} else {
-					// Get project fields
-					fields, err := gh.GetProjectFields(ctx, projectNodeID)
-					if err != nil {
-						fmt.Printf("⚠️  Warning: Failed to get project fields: %v\n", err)
-					} else {
-						// Set Team field
-						if createTeam != "" {
-							if err := setFieldValue(ctx, projectNodeID, projectItemID, fields, "Team", createTeam); err != nil {
-								fmt.Printf("⚠️  Warning: Failed to set Team: %v\n", err)
-							} else {
-								fmt.Printf("  ✓ Team: %s\n", createTeam)
-							}
+					// Set Team field
+					if createTeam != "" {
+						if err := setFieldValue(ctx, projectNodeID, projectItemID, fields, "Team", createTeam); err != nil {
+							fmt.Printf("⚠️  Warning: Failed to set Team: %v\n", err)
+						} else {
+							fmt.Printf("  ✓ Team: %s\n", createTeam)
 						}
+					}
 
-						// Set Priority field
-						if createPriority != "" {
-							if err := setFieldValue(ctx, projectNodeID, projectItemID, fields, "Priority", createPriority); err != nil {
-								fmt.Printf("⚠️  Warning: Failed to set Priority: %v\n", err)
-							} else {
-								fmt.Printf("  ✓ Priority: %s\n", createPriority)
-							}
-						}
-
-						// Set Type field
-						if createTypeField != "" {
-							if err := setFieldValue(ctx, projectNodeID, projectItemID, fields, "Type", createTypeField); err != nil {
-								fmt.Printf("⚠️  Warning: Failed to set Type: %v\n", err)
-							} else {
-								fmt.Printf("  ✓ Type: %s\n", createTypeField)
-							}
+					// Set Priority field
+					if createPriority != "" {
+						if err := setFieldValue(ctx, projectNodeID, projectItemID, fields, "Priority", createPriority); err != nil {
+							fmt.Printf("⚠️  Warning: Failed to set Priority: %v\n", err)
+						} else {
+							fmt.Printf("  ✓ Priority: %s\n", createPriority)
 						}
 					}
 				}
@@ -319,7 +337,7 @@ func runIssueCreate(cmd *cobra.Command, args []string) error {
 		if createParent == "" {
 			fmt.Printf("  1. Link to parent: gh project-management link add <parent> %d\n", createdIssue.Number)
 		}
-		if createTeam == "" && createPriority == "" && createTypeField == "" {
+		if createTeam == "" && createPriority == "" {
 			fmt.Printf("  2. Set custom fields: gh project-management field set %d --team <team> --priority <priority>\n", createdIssue.Number)
 		}
 		if len(createDependsOn) == 0 {
@@ -447,11 +465,23 @@ func displayTemplateFields(template *templates.IssueTemplate, source string) err
 
 // promptForParent asks the user if they want to link to a parent issue
 func promptForParent(ctx context.Context, cfg *config.Config) (string, error) {
-	fmt.Print("\nDo you want to link this issue to a parent? (y/N): ")
-	var response string
-	fmt.Scanln(&response)
+	fmt.Println()
 
-	if response != "y" && response != "Y" {
+	var wantsParent bool
+	confirmForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("🔗 Parent Issue").
+				Description("Do you want to link this issue to a parent?").
+				Value(&wantsParent),
+		),
+	)
+
+	if err := confirmForm.Run(); err != nil {
+		return "", fmt.Errorf("error confirming parent: %w", err)
+	}
+
+	if !wantsParent {
 		return "", nil
 	}
 
@@ -466,36 +496,50 @@ func promptForParent(ctx context.Context, cfg *config.Config) (string, error) {
 		return "", nil
 	}
 
-	fmt.Println("\nRecent open issues:")
+	// Build issue options
+	issueOptions := make([]huh.Option[int], len(issues))
 	for i, iss := range issues {
-		fmt.Printf("  %d) #%d - %s\n", i+1, iss.Number, iss.Title)
+		label := fmt.Sprintf("#%d - %s", iss.Number, iss.Title)
+		issueOptions[i] = huh.NewOption(label, i)
 	}
 
-	fmt.Printf("\nSelect parent issue number (1-%d) or press Enter to skip: ", len(issues))
-	var selection string
-	fmt.Scanln(&selection)
+	var selectedIndex int
+	parentForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[int]().
+				Title("Select Parent Issue").
+				Description("Choose the parent issue to link to").
+				Options(issueOptions...).
+				Value(&selectedIndex),
+		),
+	)
 
-	if selection == "" {
-		return "", nil
+	if err := parentForm.Run(); err != nil {
+		return "", fmt.Errorf("error selecting parent: %w", err)
 	}
 
-	var idx int
-	_, err = fmt.Sscanf(selection, "%d", &idx)
-	if err != nil || idx < 1 || idx > len(issues) {
-		fmt.Println("Invalid selection, skipping parent link.")
-		return "", nil
-	}
-
-	return fmt.Sprintf("%d", issues[idx-1].Number), nil
+	return fmt.Sprintf("%d", issues[selectedIndex].Number), nil
 }
 
 // promptForDependencies asks the user if they want to add dependencies
 func promptForDependencies(ctx context.Context, cfg *config.Config) ([]string, error) {
-	fmt.Print("\nDo you want to add dependencies (issues that block this one)? (y/N): ")
-	var response string
-	fmt.Scanln(&response)
+	fmt.Println()
 
-	if response != "y" && response != "Y" {
+	var wantsDependencies bool
+	confirmForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("🔒 Dependencies").
+				Description("Do you want to add dependencies (issues that block this one)?").
+				Value(&wantsDependencies),
+		),
+	)
+
+	if err := confirmForm.Run(); err != nil {
+		return nil, fmt.Errorf("error confirming dependencies: %w", err)
+	}
+
+	if !wantsDependencies {
 		return nil, nil
 	}
 
@@ -510,34 +554,349 @@ func promptForDependencies(ctx context.Context, cfg *config.Config) ([]string, e
 		return nil, nil
 	}
 
-	fmt.Println("\nRecent open issues:")
+	// Build issue options
+	issueOptions := make([]huh.Option[int], len(issues))
 	for i, iss := range issues {
-		fmt.Printf("  %d) #%d - %s\n", i+1, iss.Number, iss.Title)
+		label := fmt.Sprintf("#%d - %s", iss.Number, iss.Title)
+		issueOptions[i] = huh.NewOption(label, i)
 	}
 
 	dependencies := []string{}
-	for {
-		fmt.Printf("\nSelect issue number (1-%d) or press Enter to finish: ", len(issues))
-		var selection string
-		fmt.Scanln(&selection)
+	addMore := true
 
-		if selection == "" {
-			break
+	for addMore {
+		var selectedIndex int
+		var continueAdding bool
+
+		dependencyForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewSelect[int]().
+					Title("Select Blocking Issue").
+					Description(fmt.Sprintf("Choose an issue that blocks this one (%d dependencies added)", len(dependencies))).
+					Options(issueOptions...).
+					Value(&selectedIndex),
+
+				huh.NewConfirm().
+					Title("Add another dependency?").
+					Value(&continueAdding),
+			),
+		)
+
+		if err := dependencyForm.Run(); err != nil {
+			return dependencies, fmt.Errorf("error selecting dependency: %w", err)
 		}
 
-		var idx int
-		_, err = fmt.Sscanf(selection, "%d", &idx)
-		if err != nil || idx < 1 || idx > len(issues) {
-			fmt.Println("Invalid selection, please try again.")
-			continue
-		}
-
-		issueNum := fmt.Sprintf("%d", issues[idx-1].Number)
+		issueNum := fmt.Sprintf("%d", issues[selectedIndex].Number)
 		dependencies = append(dependencies, issueNum)
 		fmt.Printf("✓ Added dependency on issue #%s\n", issueNum)
+
+		addMore = continueAdding
 	}
 
 	return dependencies, nil
+}
+
+// promptForIssueType asks the user to select an issue type
+func promptForIssueType() (string, error) {
+	fmt.Println()
+
+	var selectedType string
+	typeForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("📝 Issue Type").
+				Description("Select the type of issue to create").
+				Options(
+					huh.NewOption("Epic - Project epics", "epic"),
+					huh.NewOption("User Story - User stories", "user_story"),
+					huh.NewOption("Task - Technical tasks", "task"),
+					huh.NewOption("Bug - Bug reports", "bug"),
+					huh.NewOption("Feature - Feature requests", "feature"),
+				).
+				Value(&selectedType),
+		),
+	)
+
+	if err := typeForm.Run(); err != nil {
+		return "", fmt.Errorf("error selecting issue type: %w", err)
+	}
+
+	// If custom is selected, prompt for custom type name
+	if selectedType == "custom" {
+		var customType string
+		customForm := huh.NewForm(
+			huh.NewGroup(
+				huh.NewInput().
+					Title("Custom Type Name").
+					Description("Enter the name of your custom issue type").
+					Value(&customType),
+			),
+		)
+
+		if err := customForm.Run(); err != nil {
+			return "", fmt.Errorf("error getting custom type: %w", err)
+		}
+
+		if customType == "" {
+			return "", fmt.Errorf("custom type cannot be empty")
+		}
+
+		return customType, nil
+	}
+
+	return selectedType, nil
+}
+
+// promptForTitle asks the user for an issue title
+func promptForTitle() (string, error) {
+	fmt.Println()
+
+	var title string
+	titleForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("📌 Issue Title").
+				Description("Enter the title for your issue").
+				Value(&title).
+				Validate(func(s string) error {
+					if strings.TrimSpace(s) == "" {
+						return fmt.Errorf("title cannot be empty")
+					}
+					return nil
+				}),
+		),
+	)
+
+	if err := titleForm.Run(); err != nil {
+		return "", fmt.Errorf("error getting issue title: %w", err)
+	}
+
+	return strings.TrimSpace(title), nil
+}
+
+// promptForTeam asks the user to select a team
+func promptForTeam(cfg *config.Config) (string, error) {
+	fmt.Println()
+
+	var wantsTeam bool
+	confirmForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("👥 Team Assignment").
+				Description("Do you want to assign this issue to a team?").
+				Value(&wantsTeam),
+		),
+	)
+
+	if err := confirmForm.Run(); err != nil {
+		return "", fmt.Errorf("error confirming team assignment: %w", err)
+	}
+
+	if !wantsTeam {
+		return "", nil
+	}
+
+	// Build team options
+	teamOptions := make([]huh.Option[string], 0, len(cfg.TeamRepos))
+	for team := range cfg.TeamRepos {
+		teamOptions = append(teamOptions, huh.NewOption(team, team))
+	}
+
+	var selectedTeam string
+	teamForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Select Team").
+				Description("Choose the team to assign this issue to (will auto-transfer to team repo)").
+				Options(teamOptions...).
+				Value(&selectedTeam),
+		),
+	)
+
+	if err := teamForm.Run(); err != nil {
+		return "", fmt.Errorf("error selecting team: %w", err)
+	}
+
+	return selectedTeam, nil
+}
+
+// promptForPriority asks the user to select a priority
+func promptForPriority() (string, error) {
+	fmt.Println()
+
+	var wantsPriority bool
+	confirmForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewConfirm().
+				Title("⚡ Priority").
+				Description("Do you want to set a priority for this issue?").
+				Value(&wantsPriority),
+		),
+	)
+
+	if err := confirmForm.Run(); err != nil {
+		return "", fmt.Errorf("error confirming priority: %w", err)
+	}
+
+	if !wantsPriority {
+		return "", nil
+	}
+
+	var selectedPriority string
+	priorityForm := huh.NewForm(
+		huh.NewGroup(
+			huh.NewSelect[string]().
+				Title("Select Priority").
+				Description("Choose the priority level").
+				Options(
+					huh.NewOption("🔴 Critical", "Critical"),
+					huh.NewOption("🟠 High", "High"),
+					huh.NewOption("🟡 Medium", "Medium"),
+					huh.NewOption("⚪ Low", "Low"),
+				).
+				Value(&selectedPriority),
+		),
+	)
+
+	if err := priorityForm.Run(); err != nil {
+		return "", fmt.Errorf("error selecting priority: %w", err)
+	}
+
+	return selectedPriority, nil
+}
+
+// promptForTemplateFields asks the user to fill template fields interactively
+func promptForTemplateFields(template *templates.IssueTemplate, existingFields map[string]string) map[string]string {
+	fields := make(map[string]string)
+
+	// Copy existing fields
+	for k, v := range existingFields {
+		fields[k] = v
+	}
+
+	fmt.Println()
+	fmt.Println("📋 Template Fields")
+	fmt.Println()
+
+	// Process each field in the template
+	for _, field := range template.Body {
+		// Skip markdown fields
+		if field.Type == "markdown" {
+			continue
+		}
+
+		// Only process input fields (textarea, input, dropdown)
+		if field.Type != "textarea" && field.Type != "input" && field.Type != "dropdown" {
+			continue
+		}
+
+		// Skip if already provided
+		if _, exists := fields[field.ID]; exists {
+			continue
+		}
+
+		required := isFieldRequired(field, template)
+		var value string
+
+		// Build title and description
+		title := field.Attributes.Label
+		description := field.Attributes.Description
+		if required {
+			title += " (required)"
+		}
+
+		if field.Type == "dropdown" {
+			// Handle dropdown fields
+			if len(field.Attributes.Options) == 0 {
+				// No options available, skip
+				continue
+			}
+
+			// Build options for the select
+			selectOptions := make([]huh.Option[string], len(field.Attributes.Options))
+			for i, option := range field.Attributes.Options {
+				selectOptions[i] = huh.NewOption(option, option)
+			}
+
+			dropdownForm := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title(title).
+						Description(description).
+						Options(selectOptions...).
+						Value(&value),
+				),
+			)
+
+			if err := dropdownForm.Run(); err != nil {
+				// User cancelled or error
+				if required {
+					fmt.Printf("⚠️  Warning: Skipping required field '%s'\n", field.ID)
+				}
+				continue
+			}
+		} else if field.Type == "textarea" {
+			// Use Text for multiline input
+			textForm := huh.NewForm(
+				huh.NewGroup(
+					huh.NewText().
+						Title(title).
+						Description(description).
+						Value(&value).
+						Validate(func(s string) error {
+							if required && strings.TrimSpace(s) == "" {
+								return fmt.Errorf("this field is required")
+							}
+							return nil
+						}),
+				),
+			)
+
+			if err := textForm.Run(); err != nil {
+				// User cancelled or error, continue to next field
+				continue
+			}
+		} else {
+			// Use Input for single-line input
+			inputForm := huh.NewForm(
+				huh.NewGroup(
+					huh.NewInput().
+						Title(title).
+						Description(description).
+						Value(&value).
+						Validate(func(s string) error {
+							if required && strings.TrimSpace(s) == "" {
+								return fmt.Errorf("this field is required")
+							}
+							return nil
+						}),
+				),
+			)
+
+			if err := inputForm.Run(); err != nil {
+				// User cancelled or error, continue to next field
+				continue
+			}
+		}
+
+		// Store the value if not empty
+		value = strings.TrimSpace(value)
+		if value != "" {
+			fields[field.ID] = value
+		}
+	}
+
+	return fields
+}
+
+// isFieldRequired checks if a field is required in the template
+func isFieldRequired(field templates.BodyField, template *templates.IssueTemplate) bool {
+	for _, reqField := range template.GetRequiredFields() {
+		if reqField.ID == field.ID {
+			return true
+		}
+	}
+	return false
 }
 
 func init() {
@@ -550,12 +909,9 @@ func init() {
 	// Custom fields
 	issueCreateCmd.Flags().StringVar(&createTeam, "team", "", "Team value (Backend, App, Web, Auth) - automatically transfers to team repo")
 	issueCreateCmd.Flags().StringVar(&createPriority, "priority", "", "Priority value (Critical, High, Medium, Low)")
-	issueCreateCmd.Flags().StringVar(&createTypeField, "type-field", "", "Type field value (Epic, User Story, Story, Task, Bug, Feature)")
 	issueCreateCmd.Flags().BoolVar(&createNoTransfer, "no-transfer", false, "Prevent automatic transfer when Team field is set")
 
 	// Dependencies and linking
 	issueCreateCmd.Flags().StringSliceVar(&createDependsOn, "depends-on", []string{}, "Issues that block this issue (can be repeated)")
 	issueCreateCmd.Flags().StringVar(&createParent, "parent", "", "Parent issue to link to")
-
-	issueCreateCmd.MarkFlagRequired("type")
 }

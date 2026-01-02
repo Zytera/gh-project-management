@@ -63,3 +63,13 @@ var PriorityLevels = map[string]FieldColor{
 	"Medium":   ColorYellow,
 	"Low":      ColorGray,
 }
+
+// TypeLevels defines the issue types and their colors
+var TypeLevels = map[string]FieldColor{
+	"Epic":       ColorPurple,
+	"User Story": ColorBlue,
+	"Story":      ColorGreen,
+	"Task":       ColorYellow,
+	"Bug":        ColorRed,
+	"Feature":    ColorOrange,
+}

@@ -9,7 +9,8 @@ A GitHub CLI extension for managing hierarchical projects with Epics, User Stori
 - 🔍 **Dynamic Field Discovery**: See available fields for any template with `--show-fields`
 - 🔗 **Issue Linking**: Parent-child relationships using GitHub's sub-issue system
 - 🚫 **Dependency Management**: Block issues with blocked-by relationships
-- 📊 **Custom Fields**: Manage Team, Priority, and Type fields via GitHub Projects V2
+- 📊 **Custom Fields**: Manage Team and Priority fields via GitHub Projects V2
+- 🏷️ **Native Issue Types**: Automatically set GitHub organization issue types during creation
 - 🚀 **Smart Transfer**: Automatically transfer issues to team repositories based on Team field
 - 🔄 **Multi-Project Support**: Work with multiple GitHub projects using kubectl-style contexts
 
@@ -102,7 +103,6 @@ gh project-management issue create --type <type> \
   --field field_name="value" \
   --team Backend \
   --priority High \
-  --type-field Task \
   --parent 44 \
   --depends-on 45 \
   --depends-on 46
@@ -119,16 +119,17 @@ gh project-management issue create --type <type> \
 You can use any custom template from your repository's `.github/ISSUE_TEMPLATE/` directory.
 
 **Available flags:**
-- `--type` - Issue type/template to use (required)
+- `--type` - Issue type/template to use (required) - automatically sets GitHub issue type
 - `--title` - Issue title (required)
 - `--field` - Template field values (repeatable)
 - `--team` - Team field (Backend, App, Web, Auth, etc.)
 - `--priority` - Priority field (Critical, High, Medium, Low)
-- `--type-field` - Type field (Epic, User Story, Story, Task, Bug, Feature)
 - `--parent` - Parent issue number to link to
 - `--depends-on` - Issue numbers that block this issue (repeatable)
 - `--no-transfer` - Prevent automatic transfer when Team is set
 - `--show-fields` - Show available template fields and exit
+
+**Note:** The `--type` flag automatically sets the native GitHub issue type (Epic, User Story, Task, etc.) based on the template type.
 
 **Interactive prompts:**
 If `--parent` or `--depends-on` flags are not provided, the CLI will interactively prompt you to select from recent open issues.
@@ -153,9 +154,9 @@ gh project-management issue create --type task \
   --field checklist="- [ ] Create endpoint\n- [ ] Add validation\n- [ ] Write tests" \
   --team Backend \
   --priority High \
-  --type-field Task \
   --parent 44
 # This will automatically transfer to the Backend repository
+# Issue type "Task" is set automatically based on --type flag
 
 # Create a task with custom fields but prevent auto-transfer
 gh project-management issue create --type task \
@@ -199,14 +200,14 @@ gh project-management issue create --type task \
 
 ### Custom Fields Management
 
-Set Team, Priority, and Type fields for existing issues in GitHub Projects:
+Set Team and Priority fields for existing issues in GitHub Projects:
 
 ```bash
 # Set team field (automatically transfers to team repository)
 gh project-management field set <issue-number> --team Backend
 
 # Set multiple fields (automatically transfers)
-gh project-management field set 48 --team Backend --priority High --type Task
+gh project-management field set 48 --team Backend --priority High
 
 # Set fields but prevent automatic transfer
 gh project-management field set 48 --team Backend --priority Critical --no-transfer
@@ -215,7 +216,6 @@ gh project-management field set 48 --team Backend --priority Critical --no-trans
 **Available values:**
 - **Team**: Backend, App, Web, Auth (from your config)
 - **Priority**: Critical, High, Medium, Low
-- **Type**: Epic, User Story, Story, Task, Bug, Feature
 
 **Auto-transfer behavior:**
 When setting the Team field, the issue is **automatically transferred** to the corresponding team repository unless `--no-transfer` is specified.
@@ -226,7 +226,7 @@ When setting the Team field, the issue is **automatically transferred** to the c
 - Web → `web-app` repository
 - Auth → `auth` repository
 
-**Note:** Custom fields are now best set during issue creation using the `issue create` command with `--team`, `--priority`, and `--type-field` flags.
+**Note:** Custom fields are best set during issue creation using the `issue create` command with `--team` and `--priority` flags. Issue types are automatically set based on the `--type` flag and cannot be changed after creation.
 
 ### Issue Linking (Parent-Child)
 
@@ -263,8 +263,8 @@ gh project-management link remove #44 #45
 Establish blocked-by relationships between issues:
 
 ```bash
-# Issue A is blocked by issue B
-gh project-management dependency add <blocked-issue> <blocking-issue>
+# Issue A is blocked by one or more issues
+gh project-management dependency add <blocked-issue> <blocking-issue> [<blocking-issue2> ...]
 ```
 
 **Examples:**
@@ -272,6 +272,9 @@ gh project-management dependency add <blocked-issue> <blocking-issue>
 ```bash
 # Issue #46 is blocked by issue #45
 gh project-management dependency add #46 #45
+
+# Issue #50 is blocked by multiple issues
+gh project-management dependency add #50 #45 #47 #48
 
 # Cross-repository dependency (both must be in same repo)
 gh project-management dependency add #50 Zytera/backend#25
@@ -361,13 +364,12 @@ gh project-management issue create --type task \
   --parent 45 \
   --team Backend \
   --priority High \
-  --type-field Task \
   --depends-on 47
 
 # This single command will:
-# 1. Create the issue (#48)
+# 1. Create the issue (#48) with type "Task" (auto-set from --type flag)
 # 2. Link it to User Story #45 as a child
-# 3. Set Team, Priority, and Type fields
+# 3. Set Team and Priority project fields
 # 4. Add dependency on issue #47
 # 5. Automatically transfer to Backend repository
 # 6. Return new issue number (e.g., backend#27)
@@ -404,11 +406,13 @@ gh project-management dependency add #48 #47
 
 ```bash
 # Automatically transfers when Team is set
-gh project-management field set 48 --team Backend --priority High --type Task
+gh project-management field set 48 --team Backend --priority High
 
 # Or prevent auto-transfer
 gh project-management field set 48 --team Backend --priority High --no-transfer
 ```
+
+**Note:** Issue type was automatically set to "Task" when the issue was created with `--type task` and cannot be changed after creation.
 
 ### 4. Update Parent with Cross-Repo Reference
 
@@ -431,7 +435,7 @@ gh project-management issue create --type task \
   --parent <parent-issue> \
   --team <team> \
   --priority <priority> \
-  --type-field <type> \
+ 
   --depends-on <blocking-issue>
 ```
 
@@ -572,7 +576,7 @@ gh project-management issue create --type task \
   --parent <parent-issue> \
   --team <team> \
   --priority <priority> \
-  --type-field <type> \
+ 
   --depends-on <blocking-issue>
 ```
 
@@ -599,32 +603,31 @@ If needed, follow this order:
 - Dependencies require both issues to be in the same repository
 - After transfer, the issue number changes and parent references must be updated manually
 
-## Custom Fields
+## Custom Fields & Issue Types
 
-The extension automatically manages three custom fields in GitHub Projects:
+The extension manages two custom project fields and uses GitHub's native issue types:
 
-### Team Field
-- **Type**: Single-select dropdown
+### Team Field (Project Custom Field)
+- **Type**: Single-select dropdown in GitHub Projects
 - **Options**: Automatically populated from `team_repos` configuration
 - **Usage**: Determines which repository to transfer tasks to
 - **Auto-transfer**: When set (via `--team` flag), automatically moves issue to team repository unless `--no-transfer` is specified
 - **Set during creation**: `--team Backend`
 - **Set after creation**: `field set <issue> --team Backend`
 
-### Priority Field
-- **Type**: Single-select dropdown
+### Priority Field (Project Custom Field)
+- **Type**: Single-select dropdown in GitHub Projects
 - **Options**: Critical 🔴, High 🟠, Medium 🟡, Low ⚪
 - **Colors**: Automatically set (Red, Orange, Yellow, Gray)
 - **Set during creation**: `--priority High`
 - **Set after creation**: `field set <issue> --priority High`
 
-### Type Field
-- **Type**: Single-select dropdown
+### Issue Type (Native GitHub Field)
+- **Type**: GitHub organization issue type (not a project custom field)
 - **Options**: Epic, User Story, Story, Task, Bug, Feature
-- **Source**: GitHub organization issue types
-- **Management**: Automatically ensures types exist
-- **Set during creation**: `--type-field Task`
-- **Set after creation**: `field set <issue> --type Task`
+- **Automatic setup**: Issue types are created automatically in your organization if they don't exist
+- **Set during creation**: Automatically mapped from `--type` flag (e.g., `--type task` sets issue type "Task")
+- **Cannot be changed after creation**: Issue types are set when the issue is created and cannot be modified later
 
 ## Permissions
 
@@ -712,7 +715,6 @@ gh project-management issue create --type task \
   --parent 101 \
   --team Backend \
   --priority High \
-  --type-field Task
 # Creates issue, links to #101, sets fields, and auto-transfers to backend repo!
 # Returns new issue number (e.g., backend#27)
 ```
@@ -748,7 +750,7 @@ gh project-management issue create --type task \
 gh project-management link add #101 #102
 
 # 6. Set fields (auto-transfers)
-gh project-management field set 102 --team Backend --priority High --type Task
+gh project-management field set 102 --team Backend --priority High
 
 # Task is now in backend repository with all fields set!
 ```
