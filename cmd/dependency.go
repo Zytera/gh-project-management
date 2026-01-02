@@ -19,9 +19,9 @@ This is useful for tracking which issues must be completed before others can pro
 }
 
 var dependencyAddCmd = &cobra.Command{
-	Use:   "add <blocked-issue> <blocking-issue>",
-	Short: "Add a dependency between issues",
-	Long: `Add a dependency where the first issue is blocked by the second issue.
+	Use:   "add <blocked-issue> <blocking-issue> [<blocking-issue2> ...]",
+	Short: "Add dependencies to an issue",
+	Long: `Add one or more dependencies where the first issue is blocked by the following issues.
 
 Issue references can be specified as:
   - #123 (issue in configured default repo)
@@ -32,9 +32,12 @@ Examples:
   # Issue #46 is blocked by issue #45 (both in default repo)
   gh project-management dependency add #46 #45
 
+  # Issue #50 is blocked by multiple issues
+  gh project-management dependency add #50 #45 #47 #48
+
   # Issue #50 in current repo blocked by issue #25 in another repo
   gh project-management dependency add #50 Zytera/backend#25`,
-	Args: cobra.ExactArgs(2),
+	Args: cobra.MinimumNArgs(2),
 	RunE: runDependencyAdd,
 }
 
@@ -48,35 +51,52 @@ func runDependencyAdd(cmd *cobra.Command, args []string) error {
 	}
 
 	blockedIssueRef := args[0]
-	blockingIssueRef := args[1]
+	blockingIssueRefs := args[1:]
 
-	// Parse issue references
+	// Parse blocked issue reference
 	blockedOwner, blockedRepo, blockedNumber, err := gh.ParseIssueReference(blockedIssueRef, cfg.Owner, cfg.DefaultRepo)
 	if err != nil {
 		return fmt.Errorf("invalid blocked issue reference: %w", err)
 	}
 
-	blockingOwner, blockingRepo, blockingNumber, err := gh.ParseIssueReference(blockingIssueRef, cfg.Owner, cfg.DefaultRepo)
-	if err != nil {
-		return fmt.Errorf("invalid blocking issue reference: %w", err)
+	fmt.Printf("Adding dependencies to %s/%s#%d...\n", blockedOwner, blockedRepo, blockedNumber)
+
+	// Track success count
+	successCount := 0
+	totalCount := len(blockingIssueRefs)
+
+	// Add each blocking issue as a dependency
+	for _, blockingIssueRef := range blockingIssueRefs {
+		// Parse blocking issue reference
+		blockingOwner, blockingRepo, blockingNumber, err := gh.ParseIssueReference(blockingIssueRef, cfg.Owner, cfg.DefaultRepo)
+		if err != nil {
+			fmt.Printf("⚠️  Warning: Invalid blocking issue reference '%s': %v\n", blockingIssueRef, err)
+			continue
+		}
+
+		// Verify both issues are in the same repository
+		if blockedOwner != blockingOwner || blockedRepo != blockingRepo {
+			fmt.Printf("⚠️  Warning: Issue #%d must be in the same repository as #%d (skipping)\n", blockingNumber, blockedNumber)
+			continue
+		}
+
+		// Add the dependency
+		err = gh.AddBlockedBy(ctx, blockedOwner, blockedRepo, blockedNumber, blockingNumber)
+		if err != nil {
+			fmt.Printf("⚠️  Warning: Failed to add dependency on #%d: %v\n", blockingNumber, err)
+			continue
+		}
+
+		fmt.Printf("  ✓ Blocked by #%d\n", blockingNumber)
+		successCount++
 	}
 
-	// Verify both issues are in the same repository
-	if blockedOwner != blockingOwner || blockedRepo != blockingRepo {
-		return fmt.Errorf("both issues must be in the same repository (blocked: %s/%s, blocking: %s/%s)",
-			blockedOwner, blockedRepo, blockingOwner, blockingRepo)
+	// Summary
+	if successCount == 0 {
+		return fmt.Errorf("failed to add any dependencies")
 	}
 
-	fmt.Printf("Adding dependency: %s/%s#%d is blocked by #%d...\n",
-		blockedOwner, blockedRepo, blockedNumber, blockingNumber)
-
-	// Add the dependency
-	err = gh.AddBlockedBy(ctx, blockedOwner, blockedRepo, blockedNumber, blockingNumber)
-	if err != nil {
-		return fmt.Errorf("failed to add dependency: %w", err)
-	}
-
-	fmt.Printf("✓ Successfully added dependency: #%d is now blocked by #%d\n", blockedNumber, blockingNumber)
+	fmt.Printf("\n✓ Successfully added %d/%d dependencies to issue #%d\n", successCount, totalCount, blockedNumber)
 	return nil
 }
 

@@ -263,8 +263,8 @@ gh project-management link remove #44 #45
 Establish blocked-by relationships between issues:
 
 ```bash
-# Issue A is blocked by issue B
-gh project-management dependency add <blocked-issue> <blocking-issue>
+# Issue A is blocked by one or more issues
+gh project-management dependency add <blocked-issue> <blocking-issue> [<blocking-issue2> ...]
 ```
 
 **Examples:**
@@ -272,6 +272,9 @@ gh project-management dependency add <blocked-issue> <blocking-issue>
 ```bash
 # Issue #46 is blocked by issue #45
 gh project-management dependency add #46 #45
+
+# Issue #50 is blocked by multiple issues
+gh project-management dependency add #50 #45 #47 #48
 
 # Cross-repository dependency (both must be in same repo)
 gh project-management dependency add #50 Zytera/backend#25

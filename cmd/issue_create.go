@@ -780,7 +780,13 @@ func promptForTemplateFields(template *templates.IssueTemplate, existingFields m
 
 	// Process each field in the template
 	for _, field := range template.Body {
-		if field.Type != "textarea" && field.Type != "input" {
+		// Skip markdown fields
+		if field.Type == "markdown" {
+			continue
+		}
+
+		// Only process input fields (textarea, input, dropdown)
+		if field.Type != "textarea" && field.Type != "input" && field.Type != "dropdown" {
 			continue
 		}
 
@@ -792,18 +798,49 @@ func promptForTemplateFields(template *templates.IssueTemplate, existingFields m
 		required := isFieldRequired(field, template)
 		var value string
 
-		// Build description
+		// Build title and description
+		title := field.Attributes.Label
 		description := field.Attributes.Description
 		if required {
-			description += " (required)"
+			title += " (required)"
 		}
 
-		if field.Type == "textarea" {
+		if field.Type == "dropdown" {
+			// Handle dropdown fields
+			if len(field.Attributes.Options) == 0 {
+				// No options available, skip
+				continue
+			}
+
+			// Build options for the select
+			selectOptions := make([]huh.Option[string], len(field.Attributes.Options))
+			for i, option := range field.Attributes.Options {
+				selectOptions[i] = huh.NewOption(option, option)
+			}
+
+			dropdownForm := huh.NewForm(
+				huh.NewGroup(
+					huh.NewSelect[string]().
+						Title(title).
+						Description(description).
+						Options(selectOptions...).
+						Value(&value),
+				),
+			)
+
+			if err := dropdownForm.Run(); err != nil {
+				// User cancelled or error
+				if required {
+					fmt.Printf("⚠️  Warning: Skipping required field '%s'\n", field.ID)
+				}
+				continue
+			}
+		} else if field.Type == "textarea" {
 			// Use Text for multiline input
 			textForm := huh.NewForm(
 				huh.NewGroup(
 					huh.NewText().
-						Title(field.Attributes.Label).
+						Title(title).
 						Description(description).
 						Value(&value).
 						Validate(func(s string) error {
@@ -824,7 +861,7 @@ func promptForTemplateFields(template *templates.IssueTemplate, existingFields m
 			inputForm := huh.NewForm(
 				huh.NewGroup(
 					huh.NewInput().
-						Title(field.Attributes.Label).
+						Title(title).
 						Description(description).
 						Value(&value).
 						Validate(func(s string) error {
