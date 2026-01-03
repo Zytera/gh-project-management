@@ -1,0 +1,74 @@
+name: User Story
+description: Template for creating a new user story
+title: "[Story Name]"
+type: "User Story"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📋 User Story Template
+        A story describes a specific functionality from the user's perspective.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Description
+      description: Detailed description of the story
+      placeholder: |
+        As a [type of user]
+        I want [goal]
+        So that [benefit]
+    validations:
+      required: true
+
+  - type: textarea
+    id: tasks
+    attributes:
+      label: 📋 Tasks
+      description: List of tasks that make up this story
+      placeholder: |
+        ### Task 1: [Backend] Task name
+        Brief description
+
+        ### Task 2: [App] Task name
+        Brief description
+
+        ### Task 3: [Web] Task name
+        Brief description
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: ✅ Acceptance Criteria
+      description: Acceptance criteria for the story
+      placeholder: |
+        - ✅ Criterion 1
+        - ✅ Criterion 2
+        - ✅ Criterion 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: teams
+    attributes:
+      label: 👥 Teams Involved
+      description: Teams that will work on this story
+      placeholder: |
+        - **Backend**: Specific work
+        - **App**: Specific work
+        - **Web**: Specific work
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical_notes
+    attributes:
+      label: 📝 Technical Notes
+      description: Important technical considerations
+      placeholder: |
+        - Technical note 1
+        - Technical note 2
+    validations:
+      required: false

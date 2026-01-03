@@ -1,0 +1,74 @@
+name: Task
+description: Template for creating a new technical task
+title: "[Task Name]"
+type: "Task"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📋 Task Template
+        A task is a specific unit of technical work assigned to a team.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Description
+      description: Detailed description of the task
+      placeholder: Implement/Create/Develop...
+    validations:
+      required: true
+
+  - type: textarea
+    id: checklist
+    attributes:
+      label: ✅ Task Checklist
+      description: Detailed list of subtasks or steps to follow
+      placeholder: |
+        - [ ] Subtask 1
+        - [ ] Subtask 2
+        - [ ] Subtask 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: ✅ Acceptance Criteria
+      description: Acceptance criteria for the task
+      placeholder: |
+        - ✅ Criterion 1
+        - ✅ Criterion 2
+        - ✅ Criterion 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: technical_details
+    attributes:
+      label: 🔧 Technical Details
+      description: Implementation technical details
+      placeholder: |
+        ### Technologies
+        - Framework/library 1
+        - Framework/library 2
+
+        ### Endpoints/APIs
+        - POST /api/...
+        - GET /api/...
+
+        ### Data Models
+        - Table/Schema 1
+        - Table/Schema 2
+    validations:
+      required: false
+
+  - type: textarea
+    id: notes
+    attributes:
+      label: 📝 Additional Notes
+      description: Notes, questions or additional considerations
+      placeholder: |
+        - Note 1
+        - Question 1
+    validations:
+      required: false

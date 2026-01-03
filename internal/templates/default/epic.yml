@@ -1,0 +1,94 @@
+name: Epic
+description: Template for creating a new project epic
+title: "[Epic Name]"
+type: "Epic"
+body:
+  - type: markdown
+    attributes:
+      value: |
+        ## 📋 Epic Template
+        An epic groups multiple related stories that comprise a larger system functionality.
+
+  - type: textarea
+    id: description
+    attributes:
+      label: 📝 Description
+      description: General description of the epic and what functionalities it includes
+      placeholder: |
+        Complete system for... including:
+        - Functionality 1
+        - Functionality 2
+        - Functionality 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: objective
+    attributes:
+      label: 🎯 Objective
+      description: Main objective to be achieved with this epic
+      placeholder: Enable users to...
+    validations:
+      required: true
+
+  - type: textarea
+    id: stories
+    attributes:
+      label: 📦 Included Stories
+      description: List of stories that make up this epic
+      placeholder: |
+        ### Story 1: [Name]
+        Brief description of the story
+
+        ### Story 2: [Name]
+        Brief description of the story
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: ✅ Acceptance Criteria
+      description: Acceptance criteria for the complete epic
+      placeholder: |
+        - ✅ Criterion 1
+        - ✅ Criterion 2
+        - ✅ Criterion 3
+    validations:
+      required: true
+
+  - type: textarea
+    id: teams
+    attributes:
+      label: 👥 Teams Involved
+      description: Teams that will work on this epic
+      placeholder: |
+        - **Backend**: Work description
+        - **App**: Work description
+        - **Web**: Work description
+        - **Auth**: Work description
+    validations:
+      required: true
+
+  - type: textarea
+    id: estimation
+    attributes:
+      label: 📊 Estimation
+      description: Estimation of stories, tasks and complexity
+      placeholder: |
+        - **Stories:** X
+        - **Estimated tasks:** ~X
+        - **Complexity:** High/Medium/Low
+    validations:
+      required: false
+
+  - type: textarea
+    id: technical_notes
+    attributes:
+      label: 📝 Technical Notes
+      description: Important technical considerations
+      placeholder: |
+        - Technical note 1
+        - Technical note 2
+    validations:
+      required: false
