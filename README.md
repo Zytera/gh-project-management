@@ -777,7 +777,3 @@ If you encounter issues:
 1. Check this README and troubleshooting section
 2. Review [GitHub Issues](https://github.com/Zytera/gh-project-management/issues)
 3. Open a new issue with detailed information
-
-## License
-
-TODO
