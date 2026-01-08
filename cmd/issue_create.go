@@ -894,7 +894,7 @@ func init() {
 	// Template flags
 	issueCreateCmd.Flags().StringVar(&issueType, "type", "", "Issue type (epic, user_story, task, bug, feature, or custom)")
 	issueCreateCmd.Flags().StringVar(&issueTitle, "title", "", "Issue title (required)")
-	issueCreateCmd.Flags().StringSliceVar(&issueFields, "field", []string{}, "Field values in format 'fieldname=value' (can be repeated)")
+	issueCreateCmd.Flags().StringArrayVar(&issueFields, "field", []string{}, "Field values in format 'fieldname=value' (can be repeated)")
 	issueCreateCmd.Flags().BoolVar(&showFields, "show-fields", false, "Show available fields for the specified type")
 
 	// Custom fields
@@ -903,6 +903,6 @@ func init() {
 	issueCreateCmd.Flags().BoolVar(&createNoTransfer, "no-transfer", false, "Prevent automatic transfer when Team field is set")
 
 	// Dependencies and linking
-	issueCreateCmd.Flags().StringSliceVar(&createDependsOn, "depends-on", []string{}, "Issues that block this issue (can be repeated)")
+	issueCreateCmd.Flags().StringArrayVar(&createDependsOn, "depends-on", []string{}, "Issues that block this issue (can be repeated)")
 	issueCreateCmd.Flags().StringVar(&createParent, "parent", "", "Parent issue to link to")
 }
